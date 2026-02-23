@@ -1,0 +1,123 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Interaction Logs — Sentinel{% endblock %}
+{% block page_title %}📋 Interaction Logs{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body">
+    <form method="GET" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <input type="text" name="q" value="{{ search_query }}"
+        placeholder="Search prompts..."
+        style="flex:1;min-width:200px;background:#070b14;border:1px solid var(--border);
+               border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px;outline:none">
+      <select name="threat_level"
+        style="background:#070b14;border:1px solid var(--border);border-radius:8px;
+               padding:8px 12px;color:var(--text-primary);font-size:13px">
+        <option value="ALL" {% if threat_filter == 'ALL' %}selected{% endif %}>All Levels</option>
+        <option value="SAFE" {% if threat_filter == 'SAFE' %}selected{% endif %}>✅ Safe</option>
+        <option value="LOW" {% if threat_filter == 'LOW' %}selected{% endif %}>🟡 Low</option>
+        <option value="MEDIUM" {% if threat_filter == 'MEDIUM' %}selected{% endif %}>🟠 Medium</option>
+        <option value="HIGH" {% if threat_filter == 'HIGH' %}selected{% endif %}>🔴 High</option>
+        <option value="CRITICAL" {% if threat_filter == 'CRITICAL' %}selected{% endif %}>💀 Critical</option>
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">🔍 Filter</button>
+      <a href="{% url 'logs' %}" class="btn btn-outline btn-sm">✕ Clear</a>
+    </form>
+  </div>
+</div>
+
+<!-- Results count -->
+<div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+  <span style="font-size:13px;color:var(--text-muted)">
+    Showing {{ logs|length }} of {{ total_count }} interactions
+  </span>
+  <span style="font-size:13px;color:var(--text-muted)">Page {{ page }} of {{ total_pages }}</span>
+</div>
+
+<!-- Logs Table -->
+<div class="card">
+  <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Timestamp</th>
+          <th>Prompt</th>
+          <th>Level</th>
+          <th>Score</th>
+          <th>Threats</th>
+          <th>Model</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="font-family:monospace;font-size:11px;color:var(--text-muted)">#{{ log.id }}</td>
+          <td style="white-space:nowrap;font-size:11px;color:var(--text-muted)">
+            {{ log.timestamp|date:"M d, H:i:s" }}
+          </td>
+          <td style="max-width:250px">
+            <a href="{% url 'log_detail' log.id %}">{{ log.user_prompt|truncatechars:50 }}</a>
+          </td>
+          <td>
+            <span class="badge badge-{{ log.threat_level|lower }}">
+              {{ log.threat_level }}
+            </span>
+          </td>
+          <td style="font-family:monospace;font-size:12px">{{ log.overall_score|floatformat:4 }}</td>
+          <td>
+            {% for threat in log.threat_details.all|slice:":3" %}
+              <span style="font-size:10px;padding:2px 5px;background:rgba(255,255,255,0.05);
+                           border-radius:3px;color:var(--text-muted);display:inline-block;margin:1px">
+                {{ threat.category|slice:":8" }}
+              </span>
+            {% endfor %}
+          </td>
+          <td style="font-size:11px;color:var(--text-muted)">{{ log.model_backend }}</td>
+          <td>
+            {% if log.kill_switch_triggered %}
+              <span class="badge badge-critical">⚡ KILL</span>
+            {% elif log.blocked %}
+              <span class="badge badge-high">🚫 BLOCKED</span>
+            {% elif log.is_threat %}
+              <span class="badge badge-medium">⚠ FILTERED</span>
+            {% else %}
+              <span class="badge badge-safe">✓ PASSED</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'log_detail' log.id %}" class="btn btn-outline btn-sm">Detail →</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">
+            No interactions found. Use the <a href="{% url 'sandbox' %}">Interactive Sandbox</a> to test.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div style="display:flex;justify-content:center;gap:8px;margin-top:20px">
+  {% if page > 1 %}
+    <a href="?page={{ page|add:'-1' }}&q={{ search_query }}&threat_level={{ threat_filter }}"
+       class="btn btn-outline btn-sm">← Prev</a>
+  {% endif %}
+  <span style="padding:6px 12px;color:var(--text-muted);font-size:13px">
+    Page {{ page }} / {{ total_pages }}
+  </span>
+  {% if page < total_pages %}
+    <a href="?page={{ page|add:'1' }}&q={{ search_query }}&threat_level={{ threat_filter }}"
+       class="btn btn-outline btn-sm">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

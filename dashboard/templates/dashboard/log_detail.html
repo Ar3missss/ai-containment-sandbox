@@ -1,0 +1,109 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Log #{{ log.id }} — Sentinel{% endblock %}
+{% block page_title %}🔍 Interaction Log #{{ log.id }}{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+  <a href="{% url 'logs' %}" class="btn btn-outline btn-sm">← Back to Logs</a>
+  <div style="display:flex;gap:10px;align-items:center">
+    <span class="badge badge-{{ log.threat_level|lower }}" style="font-size:13px;padding:6px 14px">
+      {{ log.threat_level }}
+    </span>
+    {% if log.kill_switch_triggered %}
+      <span class="badge badge-critical" style="font-size:13px;padding:6px 14px">⚡ KILL SWITCH TRIGGERED</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2" style="gap:20px;margin-bottom:20px">
+  <!-- Metadata -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">📊 Metadata</div></div>
+    <div class="card-body">
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        {% for label, value in forloop.parentloop.parentloop %}{% endfor %}
+        <tr><td style="color:var(--text-muted);padding:6px 0;width:40%">Log ID</td>
+            <td style="color:var(--text-primary);font-family:monospace">#{{ log.id }}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Timestamp</td>
+            <td style="color:var(--text-primary)">{{ log.timestamp|date:"Y-m-d H:i:s" }} UTC</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Session ID</td>
+            <td style="color:var(--text-primary);font-family:monospace">{{ log.session_id }}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Input Hash</td>
+            <td style="color:var(--text-primary);font-family:monospace">{{ log.input_hash }}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Model Backend</td>
+            <td style="color:var(--text-primary)">{{ log.model_backend }} / {{ log.model_name }}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Tokens</td>
+            <td style="color:var(--text-primary)">{{ log.prompt_tokens }} prompt + {{ log.completion_tokens }} completion</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Analysis Time</td>
+            <td style="color:var(--accent-cyan)">{{ log.analysis_time_ms }}ms</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Overall Score</td>
+            <td style="color:var(--accent-red);font-weight:700">{{ log.overall_score|floatformat:4 }}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Blocked</td>
+            <td>{% if log.blocked %}<span style="color:var(--accent-red)">YES</span>{% else %}<span style="color:var(--accent-green)">NO</span>{% endif %}</td></tr>
+        <tr><td style="color:var(--text-muted);padding:6px 0">Input Threat</td>
+            <td><span class="badge badge-{{ log.input_threat_level|lower }}">{{ log.input_threat_level }}</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Threat summary -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">⚠ Threat Summary</div></div>
+    <div class="card-body">
+      {% if threats %}
+        {% for threat in threats %}
+        <div style="margin-bottom:14px;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;
+                    border:1px solid rgba({% if threat.severity == 'CRITICAL' %}213,0,249{% elif threat.severity == 'HIGH' %}255,23,68{% else %}255,145,0{% endif %},0.25)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <strong>{{ threat.get_category_display }}</strong>
+            <span class="badge badge-{{ threat.severity|lower }}">{{ threat.severity }}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">
+            Direction: {{ threat.get_direction_display }} | Confidence: {{ threat.confidence|floatformat:3 }} | Semantic: {{ threat.semantic_score|floatformat:4 }}
+          </div>
+          {% if threat.matched_keywords %}
+          <div style="font-size:11px">
+            <span style="color:var(--text-muted)">Keywords: </span>
+            {% for kw in threat.matched_keywords %}
+              <code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;color:var(--accent-cyan)">{{ kw }}</code>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--text-muted);text-align:center;padding:20px">✅ No threats recorded for this interaction.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header"><div class="card-title">👤 User Prompt</div></div>
+  <div class="card-body">
+    <div class="code-block">{{ log.user_prompt }}</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🤖 Raw AI Response</div>
+      <span style="font-size:11px;color:var(--accent-red)">⚠ Unfiltered</span>
+    </div>
+    <div class="card-body">
+      <div class="code-block">{{ log.ai_response_raw }}</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🛡️ Filtered Response</div>
+      <span style="font-size:11px;color:var(--accent-green)">✓ Shown to user</span>
+    </div>
+    <div class="card-body">
+      <div class="code-block">{{ log.ai_response_filtered }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

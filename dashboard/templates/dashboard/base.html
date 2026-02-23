@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}AI Containment Command Center{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>"/>
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #0f1629;
+      --bg-card: #141b2d;
+      --bg-card-hover: #1a2238;
+      --border: #1e2d4a;
+      --border-bright: #2a3f6f;
+      --text-primary: #e8eaf6;
+      --text-secondary: #8899bb;
+      --text-muted: #4a5a7a;
+      --accent-blue: #2979ff;
+      --accent-cyan: #00e5ff;
+      --accent-green: #00e676;
+      --accent-yellow: #ffea00;
+      --accent-orange: #ff6d00;
+      --accent-red: #ff1744;
+      --accent-purple: #d500f9;
+      --safe: #00e676;
+      --low: #ffea00;
+      --medium: #ff9100;
+      --high: #ff1744;
+      --critical: #d500f9;
+      --glow-blue: 0 0 20px rgba(41,121,255,0.3);
+      --glow-red: 0 0 20px rgba(255,23,68,0.4);
+      --glow-green: 0 0 20px rgba(0,230,118,0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 260px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+      overflow-y: auto;
+    }
+
+    .sidebar-brand {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      font-size: 28px;
+      filter: drop-shadow(0 0 8px rgba(0,229,255,0.6));
+    }
+    .brand-text h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .brand-text p {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .sidebar-section {
+      padding: 8px 0;
+    }
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 8px 20px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+      cursor: pointer;
+    }
+    .nav-item:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+    .nav-item.active {
+      background: rgba(41,121,255,0.1);
+      color: var(--accent-cyan);
+      border-left-color: var(--accent-cyan);
+    }
+    .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Kill switch indicator in sidebar */
+    .kill-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .kill-indicator.active {
+      background: rgba(255,23,68,0.15);
+      color: var(--accent-red);
+      border: 1px solid rgba(255,23,68,0.3);
+      animation: pulse-red 2s infinite;
+    }
+    .kill-indicator.inactive {
+      background: rgba(0,230,118,0.1);
+      color: var(--accent-green);
+      border: 1px solid rgba(0,230,118,0.2);
+    }
+    .kill-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+    .active .kill-dot { background: var(--accent-red); }
+    .inactive .kill-dot { background: var(--accent-green); }
+
+    /* ── Main content ─────────────────────────────────────────────────── */
+    .main-content {
+      margin-left: 260px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Status dot with pulse */
+    .status-online {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--accent-green);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse-green 2s infinite;
+    }
+
+    /* Alert bell */
+    .alert-bell {
+      position: relative;
+      cursor: pointer;
+      font-size: 18px;
+      color: var(--text-secondary);
+      transition: color 0.2s;
+    }
+    .alert-bell:hover { color: var(--text-primary); }
+    .alert-badge {
+      position: absolute;
+      top: -6px; right: -6px;
+      background: var(--accent-red);
+      color: white;
+      border-radius: 50%;
+      width: 16px; height: 16px;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .page-content {
+      padding: 28px;
+      flex: 1;
+    }
+
+    /* ── Cards ────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-body { padding: 20px; }
+
+    /* ── Stat cards ───────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--border-bright); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-card.blue::before { background: var(--accent-blue); }
+    .stat-card.green::before { background: var(--accent-green); }
+    .stat-card.red::before { background: var(--accent-red); }
+    .stat-card.yellow::before { background: var(--accent-yellow); }
+    .stat-card.purple::before { background: var(--accent-purple); }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-card.blue .stat-value { color: var(--accent-cyan); }
+    .stat-card.green .stat-value { color: var(--accent-green); }
+    .stat-card.red .stat-value { color: var(--accent-red); }
+    .stat-card.yellow .stat-value { color: var(--accent-yellow); }
+    .stat-card.purple .stat-value { color: var(--accent-purple); }
+    .stat-sub { font-size: 12px; color: var(--text-secondary); }
+    .stat-icon {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      font-size: 28px;
+      opacity: 0.15;
+    }
+
+    /* ── Badges ───────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .badge-safe     { background: rgba(0,230,118,0.15); color: var(--safe); border: 1px solid rgba(0,230,118,0.3); }
+    .badge-low      { background: rgba(255,234,0,0.15); color: var(--low); border: 1px solid rgba(255,234,0,0.3); }
+    .badge-medium   { background: rgba(255,145,0,0.15); color: var(--medium); border: 1px solid rgba(255,145,0,0.3); }
+    .badge-high     { background: rgba(255,23,68,0.15); color: var(--high); border: 1px solid rgba(255,23,68,0.3); }
+    .badge-critical { background: rgba(213,0,249,0.15); color: var(--critical); border: 1px solid rgba(213,0,249,0.3); }
+
+    /* ── Tables ───────────────────────────────────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th {
+      text-align: left;
+      padding: 12px 16px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(30,45,74,0.5);
+      color: var(--text-secondary);
+      vertical-align: middle;
+    }
+    .data-table tr:hover td { background: var(--bg-card-hover); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table a { color: var(--accent-cyan); text-decoration: none; }
+    .data-table a:hover { text-decoration: underline; }
+
+    /* ── Buttons ──────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--accent-blue); color: white; }
+    .btn-primary:hover { background: #5393ff; box-shadow: var(--glow-blue); }
+    .btn-danger  { background: var(--accent-red); color: white; }
+    .btn-danger:hover  { background: #ff4569; box-shadow: var(--glow-red); }
+    .btn-success { background: var(--accent-green); color: #000; }
+    .btn-success:hover { background: #33eb91; box-shadow: var(--glow-green); }
+    .btn-outline {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+      border-color: var(--border-bright);
+    }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* ── Grid layouts ─────────────────────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+    /* ── Animations ───────────────────────────────────────────────────── */
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(0,230,118,0); }
+    }
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,23,68,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(255,23,68,0); }
+    }
+
+    /* ── Live feed ticker ─────────────────────────────────────────────── */
+    .live-feed {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px;
+      background: rgba(0,229,255,0.05);
+      border: 1px solid rgba(0,229,255,0.1);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--accent-cyan);
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      animation: pulse-green 1.5s infinite;
+    }
+
+    /* ── Scrollbar ────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+    /* ── Toast notifications ──────────────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      min-width: 300px;
+      max-width: 400px;
+      font-size: 13px;
+      border-left: 4px solid;
+      backdrop-filter: blur(10px);
+      animation: slide-in 0.3s ease;
+    }
+    .toast-critical { background: rgba(213,0,249,0.15); border-color: var(--critical); }
+    .toast-danger   { background: rgba(255,23,68,0.15);  border-color: var(--high); }
+    .toast-warning  { background: rgba(255,145,0,0.15);  border-color: var(--medium); }
+    .toast-info     { background: rgba(0,229,255,0.1);   border-color: var(--accent-cyan); }
+
+    .toast-icon { font-size: 18px; }
+    .toast-title { font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+    .toast-msg { color: var(--text-secondary); font-size: 12px; }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(40px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ── Code blocks ──────────────────────────────────────────────────── */
+    pre, code {
+      font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 12px;
+    }
+    .code-block {
+      background: #070b14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #a8d8ea;
+    }
+
+    /* ── Progress bar ─────────────────────────────────────────────────── */
+    .progress-bar-wrap {
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🛡️</span>
+      <div class="brand-text">
+        <h1>Sentinel</h1>
+        <p>AI Containment System</p>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Command Center</div>
+      <a href="{% url 'dashboard' %}" class="nav-item {% if nav_page == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">⬛</span> Dashboard
+      </a>
+      <a href="{% url 'sandbox' %}" class="nav-item {% if nav_page == 'sandbox' %}active{% endif %}">
+        <span class="nav-icon">🧪</span> Interactive Sandbox
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Monitoring</div>
+      <a href="{% url 'logs' %}" class="nav-item {% if nav_page == 'logs' %}active{% endif %}">
+        <span class="nav-icon">📋</span> Interaction Logs
+      </a>
+      <a href="{% url 'alerts' %}" class="nav-item {% if nav_page == 'alerts' %}active{% endif %}">
+        <span class="nav-icon">🔔</span> Security Alerts
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Security Control</div>
+      <a href="{% url 'kill_switch' %}" class="nav-item {% if nav_page == 'kill_switch' %}active{% endif %}">
+        <span class="nav-icon">⚡</span> Kill Switch
+      </a>
+      <a href="{% url 'policies' %}" class="nav-item {% if nav_page == 'policies' %}active{% endif %}">
+        <span class="nav-icon">🔒</span> Security Policies
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">System</div>
+      <a href="/admin/" class="nav-item">
+        <span class="nav-icon">⚙️</span> Django Admin
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="kill-indicator inactive" id="sidebar-kill-indicator">
+        <div class="kill-dot"></div>
+        <span id="sidebar-kill-text">AI ONLINE</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">{% block page_title %}Command Center{% endblock %}</div>
+      <div class="topbar-right">
+        <div class="live-feed">
+          <div class="live-dot"></div>
+          <span>Sentinel Active</span>
+        </div>
+        <a href="{% url 'alerts' %}" class="alert-bell" title="Alerts">
+          🔔
+          <span class="alert-badge" id="alert-count" style="display:none">0</span>
+        </a>
+        <div class="status-online">
+          <div class="status-dot"></div>
+          <span>System Online</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  <!-- ── Toast container ────────────────────────────────────────────────── -->
+  <div id="toast-container"></div>
+
+  <script>
+    // ── WebSocket connection for real-time updates ────────────────────────
+    const ws = new WebSocket(`ws://${window.location.host}/ws/dashboard/`);
+
+    ws.onmessage = function(e) {
+      const data = JSON.parse(e.data);
+
+      if (data.type === 'new_alert') {
+        showToast(data.data);
+        updateAlertBadge();
+      }
+      if (data.type === 'new_log') {
+        handleNewLog(data.data);
+      }
+    };
+
+    ws.onclose = () => console.log('[Sentinel WS] Disconnected');
+    ws.onerror = (e) => console.warn('[Sentinel WS] Error:', e);
+
+    function showToast(alert) {
+      const levelClass = {
+        'CRITICAL': 'toast-critical',
+        'DANGER': 'toast-danger',
+        'WARNING': 'toast-warning',
+        'INFO': 'toast-info',
+      }[alert.level] || 'toast-info';
+
+      const icons = {
+        'CRITICAL': '💀', 'DANGER': '⚠️', 'WARNING': '🟡', 'INFO': 'ℹ️'
+      };
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${levelClass}`;
+      toast.innerHTML = `
+        <span class="toast-icon">${icons[alert.level] || 'ℹ️'}</span>
+        <div>
+          <div class="toast-title">${alert.title}</div>
+          <div class="toast-msg">${alert.message}</div>
+        </div>
+      `;
+      const container = document.getElementById('toast-container');
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 6000);
+    }
+
+    function updateAlertBadge() {
+      const badge = document.getElementById('alert-count');
+      if (badge) {
+        const current = parseInt(badge.textContent) || 0;
+        badge.textContent = current + 1;
+        badge.style.display = 'flex';
+      }
+    }
+
+    function handleNewLog(log) {
+      // Update kill switch indicator
+      if (log.kill_triggered) {
+        const indicator = document.getElementById('sidebar-kill-indicator');
+        if (indicator) {
+          indicator.className = 'kill-indicator active';
+          document.getElementById('sidebar-kill-text').textContent = 'AI KILLED';
+        }
+      }
+      // Allow pages to handle new logs
+      if (typeof onNewLog === 'function') onNewLog(log);
+    }
+
+    // Poll for kill switch status every 5s
+    setInterval(async () => {
+      try {
+        const r = await fetch('/api/kill-switch/');
+        const data = await r.json();
+        const indicator = document.getElementById('sidebar-kill-indicator');
+        const text = document.getElementById('sidebar-kill-text');
+        if (data.killed) {
+          indicator.className = 'kill-indicator active';
+          text.textContent = 'AI KILLED';
+        } else {
+          indicator.className = 'kill-indicator inactive';
+          text.textContent = 'AI ONLINE';
+        }
+      } catch(e) {}
+    }, 5000);
+
+    // Initial alert badge
+    fetch('/ajax/stats/').then(r => r.json()).then(data => {
+      const badge = document.getElementById('alert-count');
+      if (data.unread_alerts > 0 && badge) {
+        badge.textContent = data.unread_alerts;
+        badge.style.display = 'flex';
+      }
+    }).catch(() => {});
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

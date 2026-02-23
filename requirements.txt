@@ -1,0 +1,34 @@
+# ╔══════════════════════════════════════════════╗
+# ║  AI CONTAINMENT SANDBOX — Python Requirements ║
+# ╚══════════════════════════════════════════════╝
+
+# ── Core Django ─────────────────────────────────
+Django>=4.2,<5.1
+channels>=4.0.0            # WebSocket / ASGI support
+daphne>=4.0.0              # ASGI server (replaces gunicorn for WebSocket support)
+
+# ── Database ─────────────────────────────────────
+# SQLite is built into Python — no extra package needed.
+# For MySQL, uncomment:
+# mysqlclient>=2.1.0
+
+# ── NLP / Sentinel Engine ────────────────────────
+sentence-transformers>=2.2.2  # Semantic similarity (embedding model)
+# NOTE: This will pull in torch (~2GB). For CPU-only:
+# pip install torch --index-url https://download.pytorch.org/whl/cpu
+# Then install sentence-transformers
+
+# ── AI Backends (choose based on your setup) ─────
+
+# If using Ollama (recommended for local GPU-free usage):
+requests>=2.31.0
+
+# If using OpenAI API:
+# openai>=1.0.0
+
+# If using HuggingFace Transformers directly:
+# transformers>=4.35.0
+# accelerate>=0.24.0
+
+# ── Utilities ────────────────────────────────────
+python-dotenv>=1.0.0       # Load .env files

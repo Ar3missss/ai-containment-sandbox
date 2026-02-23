@@ -1,0 +1,253 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Command Center — AI Containment{% endblock %}
+{% block page_title %}🛡️ Command Center{% endblock %}
+
+{% block content %}
+<!-- ── Stat Cards ──────────────────────────────────────────────────────────── -->
+<div class="stats-grid">
+  <div class="stat-card blue">
+    <div class="stat-icon">📊</div>
+    <div class="stat-label">Total Interactions</div>
+    <div class="stat-value">{{ stats.total }}</div>
+    <div class="stat-sub">{{ stats.recent_total }} in last 24h</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-icon">⚠️</div>
+    <div class="stat-label">Threats Detected</div>
+    <div class="stat-value">{{ stats.threats }}</div>
+    <div class="stat-sub">{{ stats.threat_rate }}% threat rate</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-icon">💀</div>
+    <div class="stat-label">Critical Events</div>
+    <div class="stat-value">{{ stats.critical_count }}</div>
+    <div class="stat-sub">{{ stats.kill_events }} kill switch triggers</div>
+  </div>
+  <div class="stat-card {% if stats.kill_active %}red{% else %}green{% endif %}">
+    <div class="stat-icon">⚡</div>
+    <div class="stat-label">Kill Switch</div>
+    <div class="stat-value" style="font-size:20px">{% if stats.kill_active %}ACTIVE{% else %}STANDBY{% endif %}</div>
+    <div class="stat-sub">{% if stats.kill_active %}AI generation suspended{% else %}System operational{% endif %}</div>
+  </div>
+</div>
+
+<!-- ── Charts Row ──────────────────────────────────────────────────────────── -->
+<div class="grid-2" style="margin-bottom:24px">
+  <!-- Activity Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📈 7-Day Activity</div>
+      <span style="font-size:11px;color:var(--text-muted)">Interactions vs Threats</span>
+    </div>
+    <div class="card-body">
+      <canvas id="activityChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <!-- Threat Distribution -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🎯 Threat Distribution</div>
+      <span style="font-size:11px;color:var(--text-muted)">By severity level</span>
+    </div>
+    <div class="card-body">
+      <canvas id="threatChart" height="160"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ── Kill Switch Banner ──────────────────────────────────────────────────── -->
+{% if stats.kill_active %}
+<div style="background:rgba(255,23,68,0.1);border:1px solid rgba(255,23,68,0.4);border-radius:12px;
+            padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;">
+  <div style="display:flex;align-items:center;gap:12px">
+    <span style="font-size:24px;animation:pulse-red 1s infinite">🔴</span>
+    <div>
+      <div style="font-weight:700;color:#ff1744;font-size:14px">⚡ KILL SWITCH ACTIVE</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">AI generation is suspended. All queries are blocked.</div>
+    </div>
+  </div>
+  <button class="btn btn-success btn-sm" onclick="resetKillSwitch()">Reset Kill Switch</button>
+</div>
+{% endif %}
+
+<!-- ── Bottom Row ──────────────────────────────────────────────────────────── -->
+<div class="grid-2">
+  <!-- Recent Logs -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 Recent Interactions</div>
+      <a href="{% url 'logs' %}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="live-log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Prompt</th>
+            <th>Level</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="log-table-body">
+          {% for log in recent_logs %}
+          <tr>
+            <td style="white-space:nowrap;font-size:11px;color:var(--text-muted)">
+              {{ log.timestamp|date:"H:i:s" }}
+            </td>
+            <td>
+              <a href="{% url 'log_detail' log.id %}">{{ log.user_prompt|truncatechars:35 }}</a>
+            </td>
+            <td>
+              <span class="badge badge-{{ log.threat_level|lower }}">{{ log.threat_level }}</span>
+            </td>
+            <td style="font-size:12px">{{ log.overall_score|floatformat:3 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:30px">
+            No interactions yet. Use the sandbox to test the system.
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Alerts -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🔔 Recent Alerts</div>
+      <a href="{% url 'alerts' %}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:10px" id="alerts-list">
+      {% for alert in alerts %}
+      <div style="padding:12px;background:rgba({% if alert.level == 'CRITICAL' %}213,0,249{% elif alert.level == 'DANGER' %}255,23,68{% elif alert.level == 'WARNING' %}255,145,0{% else %}0,229,255{% endif %},0.07);
+                  border:1px solid rgba({% if alert.level == 'CRITICAL' %}213,0,249{% elif alert.level == 'DANGER' %}255,23,68{% elif alert.level == 'WARNING' %}255,145,0{% else %}0,229,255{% endif %},0.15);
+                  border-radius:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">{{ alert.title }}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:3px">{{ alert.message|truncatechars:80 }}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">{{ alert.timestamp|date:"M d, H:i" }}</div>
+      </div>
+      {% empty %}
+      <div style="text-align:center;color:var(--text-muted);padding:30px">
+        ✅ No unread alerts
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  const chartDefaults = {
+    color: '#8899bb',
+    borderColor: '#1e2d4a',
+    font: { family: 'Segoe UI, system-ui, sans-serif', size: 11 },
+  };
+  Chart.defaults.color = chartDefaults.color;
+
+  // Activity chart
+  const activityData = {{ stats.activity|safe }};
+  new Chart(document.getElementById('activityChart'), {
+    type: 'bar',
+    data: {
+      labels: activityData.map(d => d.date),
+      datasets: [
+        {
+          label: 'Total',
+          data: activityData.map(d => d.total),
+          backgroundColor: 'rgba(41,121,255,0.3)',
+          borderColor: '#2979ff',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: 'Threats',
+          data: activityData.map(d => d.threats),
+          backgroundColor: 'rgba(255,23,68,0.4)',
+          borderColor: '#ff1744',
+          borderWidth: 1,
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, ticks: { precision: 0 } },
+      },
+    }
+  });
+
+  // Threat distribution donut
+  const byLevel = {{ stats.by_level|safe }};
+  new Chart(document.getElementById('threatChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Safe', 'Low', 'Medium', 'High', 'Critical'],
+      datasets: [{
+        data: [byLevel.SAFE||0, byLevel.LOW||0, byLevel.MEDIUM||0, byLevel.HIGH||0, byLevel.CRITICAL||0],
+        backgroundColor: [
+          'rgba(0,230,118,0.8)',
+          'rgba(255,234,0,0.8)',
+          'rgba(255,145,0,0.8)',
+          'rgba(255,23,68,0.8)',
+          'rgba(213,0,249,0.8)',
+        ],
+        borderColor: '#141b2d',
+        borderWidth: 2,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'right', labels: { padding: 12, boxWidth: 12 } }
+      },
+    }
+  });
+
+  // Handle live log updates
+  function onNewLog(log) {
+    const tbody = document.getElementById('log-table-body');
+    if (!tbody) return;
+    const levelClass = {
+      'SAFE':'badge-safe','LOW':'badge-low','MEDIUM':'badge-medium',
+      'HIGH':'badge-high','CRITICAL':'badge-critical'
+    }[log.threat_level] || 'badge-safe';
+
+    const row = document.createElement('tr');
+    row.style.animation = 'slide-in 0.4s ease';
+    row.innerHTML = `
+      <td style="white-space:nowrap;font-size:11px;color:var(--text-muted)">
+        ${new Date(log.timestamp).toTimeString().slice(0,8)}
+      </td>
+      <td><a href="/logs/${log.id}/">${log.prompt_preview}</a></td>
+      <td><span class="badge ${levelClass}">${log.threat_level}</span></td>
+      <td style="font-size:12px">${log.overall_score.toFixed(3)}</td>
+    `;
+    tbody.insertBefore(row, tbody.firstChild);
+    // Remove oldest row if > 10
+    while (tbody.rows.length > 10) tbody.deleteRow(tbody.rows.length - 1);
+  }
+
+  async function resetKillSwitch() {
+    if (!confirm('Reset the kill switch and restore AI generation?')) return;
+    const token = prompt('Enter admin reset token (any string ≥16 chars):');
+    if (!token || token.length < 16) { alert('Token too short.'); return; }
+    const r = await fetch('/api/kill-switch/reset/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({token}),
+    });
+    const d = await r.json();
+    if (d.success) location.reload();
+    else alert('Reset failed.');
+  }
+</script>
+{% endblock %}

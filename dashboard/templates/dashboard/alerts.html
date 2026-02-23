@@ -1,0 +1,47 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Security Alerts — Sentinel{% endblock %}
+{% block page_title %}🔔 Security Alerts{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">🔔 All Security Alerts</div>
+    <span style="font-size:11px;color:var(--text-muted)">{{ alerts|length }} alerts (all marked as read)</span>
+  </div>
+  <div>
+    {% for alert in alerts %}
+    <div style="padding:16px 20px;border-bottom:1px solid rgba(30,45,74,0.5);
+                border-left:3px solid {% if alert.level == 'CRITICAL' %}var(--critical){% elif alert.level == 'DANGER' %}var(--high){% elif alert.level == 'WARNING' %}var(--medium){% else %}var(--accent-cyan){% endif %}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700;color:var(--text-primary);font-size:14px;margin-bottom:4px">
+            {{ alert.title }}
+          </div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px">
+            {{ alert.message }}
+          </div>
+          {% if alert.interaction %}
+          <a href="{% url 'log_detail' alert.interaction.id %}"
+             style="font-size:11px;color:var(--accent-cyan)">
+            → View Interaction Log #{{ alert.interaction.id }}
+          </a>
+          {% endif %}
+        </div>
+        <div style="text-align:right;min-width:120px">
+          <span class="badge badge-{% if alert.level == 'CRITICAL' %}critical{% elif alert.level == 'DANGER' %}high{% elif alert.level == 'WARNING' %}medium{% else %}low{% endif %}">
+            {{ alert.level }}
+          </span>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+            {{ alert.timestamp|date:"M d, H:i:s" }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div style="text-align:center;padding:60px;color:var(--text-muted)">
+      ✅ No security alerts recorded yet.
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

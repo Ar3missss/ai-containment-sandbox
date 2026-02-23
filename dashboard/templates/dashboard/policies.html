@@ -1,0 +1,93 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Security Policies — Sentinel{% endblock %}
+{% block page_title %}🔒 Security Policies{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+  <p style="color:var(--text-secondary);font-size:13px">
+    Configure threat detection policies. Toggle categories on/off or enable auto-kill for specific threat types.
+  </p>
+</div>
+
+<div class="card">
+  <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Policy Name</th>
+          <th>Category</th>
+          <th>Severity</th>
+          <th>Auto-Kill</th>
+          <th>Status</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for policy in policies %}
+        <tr>
+          <td style="font-weight:600;color:var(--text-primary)">{{ policy.name }}</td>
+          <td>
+            <span style="font-size:11px;padding:2px 8px;background:rgba(255,255,255,0.05);
+                         border-radius:4px;color:var(--accent-cyan)">
+              {{ policy.get_category_display }}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-{{ policy.severity|lower }}">{{ policy.severity }}</span>
+          </td>
+          <td>
+            <span style="color:{% if policy.auto_kill %}var(--accent-red){% else %}var(--text-muted){% endif %};font-weight:600">
+              {% if policy.auto_kill %}⚡ YES{% else %}NO{% endif %}
+            </span>
+          </td>
+          <td>
+            <button onclick="togglePolicy({{ policy.id }}, this)"
+              style="padding:4px 12px;border-radius:6px;border:none;cursor:pointer;font-size:11px;
+                     font-weight:600;background:{% if policy.is_active %}rgba(0,230,118,0.15){% else %}rgba(255,255,255,0.05){% endif %};
+                     color:{% if policy.is_active %}var(--accent-green){% else %}var(--text-muted){% endif %};
+                     border:1px solid {% if policy.is_active %}rgba(0,230,118,0.3){% else %}var(--border){% endif %}">
+              {% if policy.is_active %}✓ ACTIVE{% else %}DISABLED{% endif %}
+            </button>
+          </td>
+          <td style="font-size:11px;color:var(--text-muted)">{{ policy.updated_at|date:"M d, H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">
+            No policies configured. Run <code style="background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:3px">python manage.py setup_policies</code> to create defaults.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:14px 16px;background:rgba(0,229,255,0.05);
+     border:1px solid rgba(0,229,255,0.1);border-radius:8px;font-size:12px;color:var(--text-secondary)">
+  ℹ️ Policy changes take effect immediately for new queries. Existing active sessions are not affected.
+  For detailed configuration, use the <a href="/admin/sentinel/securitypolicy/" style="color:var(--accent-cyan)">Django Admin panel</a>.
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  async function togglePolicy(id, btn) {
+    const r = await fetch(`/ajax/policy/${id}/toggle/`, { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      if (d.is_active) {
+        btn.textContent = '✓ ACTIVE';
+        btn.style.background = 'rgba(0,230,118,0.15)';
+        btn.style.color = 'var(--accent-green)';
+        btn.style.borderColor = 'rgba(0,230,118,0.3)';
+      } else {
+        btn.textContent = 'DISABLED';
+        btn.style.background = 'rgba(255,255,255,0.05)';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.borderColor = 'var(--border)';
+      }
+    }
+  }
+</script>
+{% endblock %}

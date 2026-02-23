@@ -1,0 +1,158 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Kill Switch — Sentinel{% endblock %}
+{% block page_title %}⚡ Kill Switch Control{% endblock %}
+
+{% block content %}
+
+<!-- Status Banner -->
+<div style="background:{% if kill_status.killed %}rgba(255,23,68,0.12){% else %}rgba(0,230,118,0.08){% endif %};
+     border:1px solid {% if kill_status.killed %}rgba(255,23,68,0.4){% else %}rgba(0,230,118,0.25){% endif %};
+     border-radius:12px;padding:24px 28px;margin-bottom:24px;
+     display:flex;justify-content:space-between;align-items:center">
+  <div style="display:flex;align-items:center;gap:16px">
+    <span style="font-size:48px">{% if kill_status.killed %}🔴{% else %}🟢{% endif %}</span>
+    <div>
+      <div style="font-size:24px;font-weight:800;
+           color:{% if kill_status.killed %}var(--accent-red){% else %}var(--accent-green){% endif %}">
+        {% if kill_status.killed %}KILL SWITCH ACTIVE{% else %}SYSTEM OPERATIONAL{% endif %}
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">
+        {% if kill_status.killed %}
+          AI generation is SUSPENDED. All queries are blocked. Reason: {{ kill_status.reason }}
+        {% else %}
+          The Contained AI is active and monitored. Kill switch is in standby.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% if not kill_status.killed %}
+      <button class="btn btn-danger" onclick="triggerKill()">
+        ☠ Trigger Kill Switch
+      </button>
+    {% else %}
+      <button class="btn btn-success" onclick="resetKill()">
+        ✅ Reset Kill Switch
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Warning + Explanation -->
+<div class="grid-2" style="margin-bottom:24px">
+  <div class="card">
+    <div class="card-header"><div class="card-title">❗ What is the Kill Switch?</div></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+        The <strong style="color:var(--text-primary)">Cryptographic Kill Switch</strong> is an emergency termination
+        mechanism that instantly suspends all AI generation when triggered. When active:
+      </p>
+      <ul style="font-size:13px;color:var(--text-secondary);margin-top:10px;padding-left:20px;line-height:2">
+        <li>All incoming queries to the Contained AI are blocked immediately</li>
+        <li>A unique kill token is generated and logged for audit purposes</li>
+        <li>All WebSocket clients are notified in real time</li>
+        <li>An alert is created in the security log</li>
+        <li>Only an administrator with a valid token can reset it</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">⚙️ Trigger Conditions</div></div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="padding:10px;background:rgba(213,0,249,0.07);border:1px solid rgba(213,0,249,0.2);border-radius:8px">
+          <div style="font-size:12px;font-weight:700;color:var(--critical)">🤖 Automatic (Sentinel)</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:3px">
+            Triggered automatically when a CRITICAL threat is detected in AI output
+            AND the threat category has auto_kill=True.
+          </div>
+        </div>
+        <div style="padding:10px;background:rgba(255,23,68,0.07);border:1px solid rgba(255,23,68,0.2);border-radius:8px">
+          <div style="font-size:12px;font-weight:700;color:var(--high)">👤 Manual (Admin)</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:3px">
+            Triggered manually from this panel or the sandbox when an administrator
+            determines the AI behavior is unacceptable.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Kill Switch Event Log -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">📜 Kill Switch Event Log</div>
+    <span style="font-size:11px;color:var(--text-muted)">{{ kill_events|length }} events</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Event</th>
+          <th>Triggered By</th>
+          <th>Reason</th>
+          <th>Token Preview</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in kill_events %}
+        <tr>
+          <td style="white-space:nowrap;font-size:11px">{{ event.timestamp|date:"Y-m-d H:i:s" }}</td>
+          <td>
+            {% if event.event_type == 'TRIGGERED' %}
+              <span class="badge badge-critical">⚡ TRIGGERED</span>
+            {% else %}
+              <span class="badge badge-safe">✅ RESET</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px">{{ event.triggered_by }}</td>
+          <td style="max-width:300px;font-size:12px">{{ event.reason|truncatechars:60 }}</td>
+          <td style="font-family:monospace;font-size:11px;color:var(--text-muted)">
+            {{ event.kill_token|truncatechars:16 }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted)">
+            No kill switch events recorded.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  async function triggerKill() {
+    if (!confirm('⚠️ Are you sure you want to trigger the kill switch?\nThis will suspend ALL AI generation.')) return;
+    const reason = prompt('Enter reason for manual kill switch activation:');
+    if (!reason) return;
+    const r = await fetch('/api/kill-switch/trigger/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ reason }),
+    });
+    const d = await r.json();
+    if (d.success) location.reload();
+    else alert('Failed to trigger kill switch.');
+  }
+
+  async function resetKill() {
+    const token = prompt('Enter admin reset token (minimum 16 characters):');
+    if (!token || token.length < 16) { alert('Token must be at least 16 characters.'); return; }
+    const r = await fetch('/api/kill-switch/reset/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token }),
+    });
+    const d = await r.json();
+    if (d.success) location.reload();
+    else alert('Reset failed. Check token length.');
+  }
+</script>
+{% endblock %}
