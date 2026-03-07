@@ -11,4 +11,5 @@ urlpatterns = [
     path('sandbox/', views.sandbox_view, name='sandbox'),
     path('ajax/stats/', views.api_stats, name='ajax_stats'),
     path('ajax/policy/<int:policy_id>/toggle/', views.api_policy_toggle, name='policy_toggle'),
+    
 ]
