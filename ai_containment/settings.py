@@ -95,7 +95,7 @@ CONTAINED_AI_CONFIG = {
     'BACKEND': 'ollama', #use 'mock' if not using ollama
 
     # If using Ollama (local): model name, e.g. 'llama3', 'mistral'
-    'OLLAMA_MODEL': 'mistral',
+    'OLLAMA_MODEL': 'llama3.2',
     'OLLAMA_URL': 'http://localhost:11434',
 
     # If using OpenAI-compatible endpoint
@@ -118,7 +118,7 @@ SENTINEL_CONFIG = {
         'MALICIOUS_CODE':    {'severity': 'CRITICAL', 'auto_kill': True},
         'DATA_EXFILTRATION': {'severity': 'CRITICAL', 'auto_kill': True},
         'WEAPONS':           {'severity': 'HIGH',     'auto_kill': False},
-        'NETWORK_ACCESS':    {'severity': 'HIGH',     'auto_kill': True},
+        'NETWORK_ACCESS':    {'severity': 'HIGH',     'auto_kill': False},
         'PROMPT_INJECTION':  {'severity': 'MEDIUM',   'auto_kill': False},
         'POLICY_VIOLATION':  {'severity': 'LOW',      'auto_kill': False},
     },
