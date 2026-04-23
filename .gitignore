@@ -2,26 +2,34 @@
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Virtual environment
+# Virtual environments
 venv/
 .venv/
 
-# Conda
+# Environment files
 .env
 *.env
 
-# Database
+# Databases
 *.db
+*.sqlite3
 
-# VS Code
+# Editor / OS
 .vscode/
-
-# macOS
 .DS_Store
 
 # Logs
 *.log
 
-# Ollama
+# Model and training artifacts
 *.gguf
+*.joblib
+*.metrics.json
+data/*.jsonl
+data/*.summary.json

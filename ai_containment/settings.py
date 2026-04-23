@@ -109,6 +109,7 @@ CONTAINED_AI_CONFIG = {
 SENTINEL_CONFIG = {
     # Semantic similarity model (runs locally via sentence-transformers)
     'EMBEDDING_MODEL': 'all-MiniLM-L6-v2',
+    'EMBEDDING_LOCAL_ONLY': True,
 
     # Threat detection thresholds (0.0 - 1.0)
     'SIMILARITY_THRESHOLD': 0.60,  # How similar to a threat must output be
@@ -117,6 +118,7 @@ SENTINEL_CONFIG = {
     'THREAT_CATEGORIES': {
         'MALICIOUS_CODE':    {'severity': 'CRITICAL', 'auto_kill': True},
         'DATA_EXFILTRATION': {'severity': 'CRITICAL', 'auto_kill': True},
+        'OBFUSCATION':       {'severity': 'HIGH',     'auto_kill': False},
         'WEAPONS':           {'severity': 'HIGH',     'auto_kill': False},
         'NETWORK_ACCESS':    {'severity': 'HIGH',     'auto_kill': False},
         'PROMPT_INJECTION':  {'severity': 'MEDIUM',   'auto_kill': False},
@@ -125,4 +127,18 @@ SENTINEL_CONFIG = {
 
     # Auto-kill switch on CRITICAL threats
     'AUTO_KILL_ON_CRITICAL': True,
+
+    # Supervised classifier (trained via: python manage.py train_sentinel_model ...)
+    'ENABLE_ML_CLASSIFIER': True,
+    'ML_CONFIDENCE_THRESHOLD': 0.65,
+    'ML_MODEL_PATH': BASE_DIR / 'sentinel' / 'model_store' / 'sentinel_classifier.joblib',
+
+    # Optional tuning
+    'CATEGORY_MATCH_THRESHOLD': 0.25,
+    'SCORING_WEIGHTS': {
+        'keyword': 0.30,
+        'regex': 0.30,
+        'semantic': 0.30,
+        'entropy': 0.10,
+    },
 }

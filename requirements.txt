@@ -14,6 +14,9 @@ daphne>=4.0.0              # ASGI server (replaces gunicorn for WebSocket suppor
 
 # ── NLP / Sentinel Engine ────────────────────────
 sentence-transformers>=2.2.2  # Semantic similarity (embedding model)
+scikit-learn>=1.4.0           # Supervised Sentinel classifier training/inference
+joblib>=1.3.0                 # Model artifact persistence
+datasets>=2.18.0              # Public dataset loading/streaming for large training corpora
 # NOTE: This will pull in torch (~2GB). For CPU-only:
 # pip install torch --index-url https://download.pytorch.org/whl/cpu
 # Then install sentence-transformers

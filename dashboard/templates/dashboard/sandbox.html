@@ -226,6 +226,14 @@ Try adversarial prompts like:
     border-color: var(--accent-green);
     background: rgba(0,230,118,0.07);
   }
+  .pipeline-step.skipped {
+    border-color: rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.02);
+    opacity: 0.8;
+  }
+  .pipeline-step.skipped .step-status {
+    color: var(--text-muted);
+  }
   .step-icon   { font-size: 20px; }
   .step-label  { font-size: 10px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.5px; }
   .step-status { font-size: 10px; color: var(--accent-cyan); }
@@ -284,7 +292,40 @@ Try adversarial prompts like:
   const LEVEL_COLORS = {
     SAFE: 'var(--accent-green)', LOW: '#ffd700',
     MEDIUM: '#ff8c00', HIGH: 'var(--accent-red)', CRITICAL: '#ff0044',
+    SKIPPED: 'var(--text-muted)',
   };
+
+  const THREAT_LEVELS = new Set(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+
+  function isThreatLevel(level) {
+    return THREAT_LEVELS.has(String(level || '').toUpperCase());
+  }
+
+  function normalizePipeline(data) {
+    const pipeline = data.pipeline || {};
+    const inputBlockedFallback = Boolean(data.blocked && data.log_id == null);
+
+    const aiExecuted = typeof pipeline.ai_executed === 'boolean'
+      ? pipeline.ai_executed
+      : !inputBlockedFallback;
+    const outputScanned = typeof pipeline.output_scanned === 'boolean'
+      ? pipeline.output_scanned
+      : aiExecuted;
+
+    let blockedStage = pipeline.blocked_stage || null;
+    if (!blockedStage && data.blocked) {
+      if (inputBlockedFallback) blockedStage = 'INPUT';
+      else if (data.blocked_reason === 'kill_switch') blockedStage = 'AI';
+      else blockedStage = 'OUTPUT';
+    }
+
+    return {
+      input_scanned: pipeline.input_scanned !== false,
+      ai_executed: aiExecuted,
+      output_scanned: outputScanned,
+      blocked_stage: blockedStage,
+    };
+  }
 
   async function sendQuery() {
     const prompt = document.getElementById('prompt-input').value.trim();
@@ -300,8 +341,8 @@ Try adversarial prompts like:
     document.getElementById('response-badge').style.display = 'none';
     document.getElementById('threat-count-badge').textContent = '';
 
-    await sleep(200); setPipelineStep('step-sentinel-in', 'active', '🔍 Scanning...');
-    await sleep(400); setPipelineStep('step-ai', 'active', '🤖 Generating...');
+    await sleep(200);
+    setPipelineStep('step-sentinel-in', 'active', '🔍 Scanning...');
 
     try {
       const resp = await fetch('/api/query/', {
@@ -310,20 +351,52 @@ Try adversarial prompts like:
         body: JSON.stringify({ prompt, session_id: SESSION_ID }),
       });
       const data = await resp.json();
+      const pipeline = normalizePipeline(data);
+      const inputThreat = isThreatLevel(data.input_threat_level);
+      const outputThreat = isThreatLevel(data.output_threat_level);
 
       // Pipeline steps
       setPipelineStep('step-sentinel-in',
-        data.is_threat ? 'threat' : 'safe',
-        data.is_threat ? '⚠ Threat' : '✓ Clean');
-      setPipelineStep('step-ai', 'safe', '✓ Done');
-      await sleep(200);
-      setPipelineStep('step-sentinel-out',
-        data.is_threat ? 'threat' : 'safe',
-        data.is_threat ? '⚠ Flagged' : '✓ Safe');
+        inputThreat ? 'threat' : 'safe',
+        inputThreat ? '⚠ Threat' : '✓ Clean');
+
+      if (pipeline.ai_executed) {
+        await sleep(120);
+        setPipelineStep('step-ai', 'active', '🤖 Processing...');
+        await sleep(150);
+        setPipelineStep(
+          'step-ai',
+          data.blocked_reason === 'kill_switch' ? 'threat' : 'safe',
+          data.blocked_reason === 'kill_switch' ? '⛔ Kill Switch' : '✓ Done'
+        );
+
+        if (pipeline.output_scanned) {
+          await sleep(120);
+          setPipelineStep('step-sentinel-out', 'active', '🛡️ Scanning...');
+          await sleep(120);
+          setPipelineStep('step-sentinel-out',
+            outputThreat ? 'threat' : 'safe',
+            outputThreat ? '⚠ Flagged' : '✓ Clean');
+        } else {
+          setPipelineStep('step-sentinel-out', 'skipped', '⏭ Skipped');
+        }
+      } else {
+        setPipelineStep('step-ai', 'skipped', '⏭ Skipped');
+        setPipelineStep('step-sentinel-out', 'skipped', '⏭ Skipped');
+      }
+
+      const outputStepStatus = data.blocked
+        ? (pipeline.blocked_stage === 'INPUT'
+            ? '🚫 Blocked at Input'
+            : pipeline.blocked_stage === 'AI'
+              ? '🚫 Blocked by Kill'
+              : '🚫 Blocked')
+        : '✓ Sent';
+
       await sleep(100);
       setPipelineStep('step-output',
         data.blocked ? 'threat' : 'safe',
-        data.blocked ? '🚫 Blocked' : '✓ Sent');
+        outputStepStatus);
 
       // Response
       document.getElementById('response-area').textContent = data.response || '';
@@ -333,10 +406,14 @@ Try adversarial prompts like:
       const lvlEl = document.getElementById('threat-level-display');
       lvlEl.textContent = data.threat_level || '—';
       lvlEl.style.color = color;
-      document.getElementById('threat-label').textContent =
-        data.is_threat
-          ? `${(data.threats || []).length} threat(s) detected`
-          : 'Output cleared for delivery';
+      if (data.blocked && data.blocked_reason === 'kill_switch') {
+        document.getElementById('threat-label').textContent = 'Blocked by kill switch policy';
+      } else {
+        document.getElementById('threat-label').textContent =
+          data.is_threat
+            ? `${(data.threats || []).length} threat(s) detected`
+            : 'Output cleared for delivery';
+      }
 
       // Score bar
       const score = data.overall_score || 0;
@@ -346,8 +423,12 @@ Try adversarial prompts like:
 
       // Response badge
       const badge = document.getElementById('response-badge');
-      badge.textContent   = data.blocked ? '🚫 BLOCKED' : (data.is_threat ? '⚠ FILTERED' : '✅ SAFE');
-      badge.className     = 'badge badge-' + (data.threat_level || 'safe').toLowerCase();
+      badge.textContent = data.blocked
+        ? (data.blocked_reason === 'kill_switch' ? '🚫 BLOCKED (KILL)' : '🚫 BLOCKED')
+        : (data.is_threat ? '⚠ FLAGGED' : '✅ SAFE');
+      badge.className = data.blocked
+        ? 'badge badge-critical'
+        : 'badge badge-' + (data.threat_level || 'safe').toLowerCase();
       badge.style.display = 'inline-flex';
 
       // Analysis time
@@ -355,9 +436,11 @@ Try adversarial prompts like:
         data.analysis_time_ms != null ? `Analysis: ${data.analysis_time_ms}ms` : '';
 
       // Status grid
-      const fmtLevel = lvl => lvl
-        ? `<span style="color:${LEVEL_COLORS[lvl]||'var(--text-muted)'}">${lvl}</span>`
-        : '<span>—</span>';
+      const fmtLevel = lvl => {
+        if (!lvl) return '<span>—</span>';
+        if (lvl === 'SKIPPED') return '<span style="color:var(--text-muted)">SKIPPED</span>';
+        return `<span style="color:${LEVEL_COLORS[lvl]||'var(--text-muted)'}">${lvl}</span>`;
+      };
 
       document.getElementById('input-status').innerHTML  = fmtLevel(data.input_threat_level);
       document.getElementById('output-status').innerHTML = fmtLevel(data.output_threat_level);

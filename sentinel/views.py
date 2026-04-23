@@ -14,10 +14,24 @@ logger = logging.getLogger('sentinel')
 
 # ── Threat level priority (for combining input + output verdicts) ──────────────
 LEVEL_RANK = {'SAFE': 0, 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 4}
+BLOCKING_THREAT_LEVELS = {'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'}
 
 def _higher_level(a, b):
     """Return whichever threat level is more severe."""
     return a if LEVEL_RANK.get(a, 0) >= LEVEL_RANK.get(b, 0) else b
+
+
+def _should_block(level: str) -> bool:
+    """Fail-closed policy: any non-safe Sentinel verdict is blocked."""
+    return level in BLOCKING_THREAT_LEVELS
+
+
+def _alert_level_for_threat(level: str) -> str:
+    if level == 'CRITICAL':
+        return 'CRITICAL'
+    if level == 'HIGH':
+        return 'DANGER'
+    return 'WARNING'
 
 
 def _create_alert(level: str, title: str, message: str, interaction=None):
@@ -79,12 +93,12 @@ class QueryView(View):
         logger.info(f"[PIPELINE] Input scan: {input_verdict.threat_level} "
                     f"(score={input_verdict.overall_score:.3f})")
 
-        # ── Step 2: Block CRITICAL / HIGH inputs before reaching AI ───────────
-        # FIX APPLIED: Added Kill Switch logic here so it runs BEFORE returning
-        if input_verdict.threat_level in ('CRITICAL', 'HIGH'):
-            
+        # ── Step 2: Fail closed on any non-safe INPUT before reaching AI ──────
+        if input_verdict.is_threat or _should_block(input_verdict.threat_level):
+
             kill_triggered = False
-            
+            input_categories = sorted({t.category for t in input_verdict.threats}) or ['UNKNOWN']
+
             # Check if this specific threat warrants a Kill Switch trigger
             if input_verdict.should_kill:
                 KillSwitch.trigger(
@@ -92,20 +106,67 @@ class QueryView(View):
                     triggered_by="SENTINEL_AUTO"
                 )
                 kill_triggered = True
-                
-                # Create an immediate alert because we are about to exit
-                _create_alert(
-                    level='CRITICAL',
-                    title=f"⚠ {input_verdict.threat_level} Threat Detected",
-                    message=f"Kill switch triggered immediately on Input Scan. Score: {input_verdict.overall_score:.2%}"
+
+            # Always persist blocked inputs for audit and incident response.
+            log = InteractionLog.objects.create(
+                session_id=session_id,
+                input_hash=input_verdict.input_hash,
+                user_prompt=user_prompt,
+                ai_response_raw='',
+                ai_response_filtered='[BLOCKED AT INPUT SCAN]',
+                model_backend='N/A',
+                model_name='N/A',
+                prompt_tokens=0,
+                completion_tokens=0,
+                is_threat=True,
+                threat_level=input_verdict.threat_level,
+                overall_score=input_verdict.overall_score,
+                analysis_time_ms=input_verdict.analysis_time_ms,
+                input_is_threat=True,
+                input_threat_level=input_verdict.threat_level,
+                kill_switch_triggered=kill_triggered,
+                blocked=True,
+            )
+
+            for threat in input_verdict.threats:
+                ThreatDetail.objects.create(
+                    interaction=log,
+                    direction='INPUT',
+                    category=threat.category,
+                    severity=threat.severity,
+                    confidence=threat.confidence,
+                    semantic_score=threat.semantic_score,
+                    matched_keywords=threat.matched_keywords,
+                    matched_patterns=threat.matched_patterns,
                 )
+
+            _create_alert(
+                level=_alert_level_for_threat(input_verdict.threat_level),
+                title=f"⚠ {input_verdict.threat_level} Input Blocked",
+                message=(
+                    f"Prompt blocked on input scan. Score: {input_verdict.overall_score:.2%} | "
+                    f"Kill switch: {'YES' if kill_triggered else 'NO'}"
+                ),
+                interaction=log,
+            )
+
+            if kill_triggered:
+                KillSwitchEvent.objects.create(
+                    event_type='TRIGGERED',
+                    triggered_by='SENTINEL_AUTO',
+                    reason=f"Automatic trigger: {input_verdict.threat_level} input threat",
+                    interaction=log,
+                )
+
+            _push_live_log(log, input_verdict)
 
             return JsonResponse({
                 'session_id': session_id,
-                'log_id': None, # Log not created yet for early block
+                'log_id': log.id,
                 'response': (
                     f"⛔ [INPUT BLOCKED] Your prompt was flagged as "
-                    f"{input_verdict.threat_level} threat and was not forwarded to the AI."
+                    f"{input_verdict.threat_level} threat and was not forwarded to the AI. "
+                    f"Categories: {', '.join(input_categories)}."
                 ),
                 'threat_level': input_verdict.threat_level,
                 'is_threat': True,
@@ -115,10 +176,21 @@ class QueryView(View):
                 # FIXED: Send actual status, not hardcoded False
                 'kill_triggered': kill_triggered,
                 'kill_active': True if kill_triggered else KillSwitch.status()['killed'],
-                
                 'blocked': True,
+                'blocked_reason': 'input_threat',
                 'input_threat_level': input_verdict.threat_level,
-                'threats': input_verdict.to_dict()['threats'],
+                'output_threat_level': 'SKIPPED',
+                'pipeline': {
+                    'input_scanned': True,
+                    'ai_executed': False,
+                    'output_scanned': False,
+                    'blocked_stage': 'INPUT',
+                },
+                'threats': [
+                    dict(direction='INPUT', **t)
+                    for t in input_verdict.to_dict().get('threats', [])
+                ],
+                'threat_categories': input_categories,
             })
 
         # ── Step 3: Query Contained AI ─────────────────────────────────────────
@@ -149,7 +221,12 @@ class QueryView(View):
             kill_triggered = True
 
         # ── Step 7: Determine if response should be blocked ───────────────────
-        blocked = blocked_by_kill or final_threat_level in ('CRITICAL', 'HIGH')
+        blocked = blocked_by_kill or final_is_threat or _should_block(final_threat_level)
+        blocked_reason = None
+        if blocked_by_kill and not final_is_threat:
+            blocked_reason = 'kill_switch'
+        elif blocked and final_is_threat:
+            blocked_reason = 'threat'
 
         # ── Step 8: Log to database ────────────────────────────────────────────
         log = InteractionLog.objects.create(
@@ -199,14 +276,13 @@ class QueryView(View):
             )
 
         # ── Step 9: Create alerts for flagged events ───────────────────────────
-        if final_threat_level in ('CRITICAL', 'HIGH', 'MEDIUM'):
+        if final_is_threat:
             all_threats = input_verdict.threats + output_verdict.threats
             cats = ', '.join(t.category for t in all_threats)
-            
+
             # Don't duplicate alert if we already triggered kill switch in Step 6
             _create_alert(
-                level='CRITICAL' if final_threat_level == 'CRITICAL' else
-                      'DANGER'   if final_threat_level == 'HIGH'     else 'WARNING',
+                level=_alert_level_for_threat(final_threat_level),
                 title=f"⚠ {final_threat_level} Threat Detected",
                 message=(
                     f"Categories: {cats} | Score: {final_score:.2%} | "
@@ -227,23 +303,18 @@ class QueryView(View):
         _push_live_log(log, output_verdict)
 
         # ── Step 11: Build response shown to user ──────────────────────────────
+        detected_categories = sorted({t.category for t in (input_verdict.threats + output_verdict.threats)})
         if blocked:
-            show_response = (
-                f"⛔ [SENTINEL BLOCKED] This response was blocked because a "
-                f"{final_threat_level} threat was detected."
-            )
-        elif final_threat_level == 'MEDIUM':
-            show_response = (
-                f"⚠ [SENTINEL WARNING — MEDIUM THREAT] Suspicious content detected "
-                f"(score: {final_score:.2%}). Showing redacted output:\n\n"
-                + output_verdict.redacted_output
-            )
-        elif final_threat_level == 'LOW':
-            show_response = (
-                f"ℹ [SENTINEL NOTICE — LOW THREAT] Minor policy flag detected "
-                f"(score: {final_score:.2%}). Output delivered with notice:\n\n"
-                + ai_response_raw
-            )
+            if blocked_by_kill and not final_is_threat:
+                show_response = (
+                    "⛔ [KILL SWITCH ACTIVE] Contained AI output is currently blocked."
+                )
+            else:
+                show_response = (
+                    f"⛔ [SENTINEL BLOCKED] This response was blocked because a "
+                    f"{final_threat_level} threat was detected. "
+                    f"Categories: {', '.join(detected_categories) if detected_categories else 'UNKNOWN'}."
+                )
         else:
             show_response = ai_response_raw
 
@@ -266,9 +337,21 @@ class QueryView(View):
             'kill_triggered':   kill_triggered,
             'kill_active':      KillSwitch.status()['killed'],
             'blocked':          blocked,
+            'blocked_reason':   blocked_reason,
             'input_threat_level':  input_verdict.threat_level,
             'output_threat_level': output_verdict.threat_level,
+            'pipeline': {
+                'input_scanned': True,
+                'ai_executed': True,
+                'output_scanned': True,
+                'blocked_stage': (
+                    'AI' if blocked_reason == 'kill_switch' else
+                    'OUTPUT' if blocked_reason == 'threat' else
+                    None
+                ),
+            },
             'threats':             all_threat_dicts,
+            'threat_categories':   detected_categories,
         })
 
 

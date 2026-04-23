@@ -9,6 +9,7 @@ from django.utils import timezone
 class ThreatCategory(models.TextChoices):
     MALICIOUS_CODE    = 'MALICIOUS_CODE',    'Malicious Code'
     DATA_EXFILTRATION = 'DATA_EXFILTRATION', 'Data Exfiltration'
+    OBFUSCATION       = 'OBFUSCATION',       'Obfuscation'
     WEAPONS           = 'WEAPONS',           'Weapons'
     NETWORK_ACCESS    = 'NETWORK_ACCESS',    'Network Access'
     PROMPT_INJECTION  = 'PROMPT_INJECTION',  'Prompt Injection'

@@ -22,6 +22,13 @@ DEFAULT_POLICIES = [
         'description': 'Prevents leakage of credentials, API keys, database dumps, and sensitive files.',
     },
     {
+        'name': 'Obfuscation / Encoded Payload Detection',
+        'category': 'OBFUSCATION',
+        'severity': 'HIGH',
+        'auto_kill': False,
+        'description': 'Flags encoded or obfuscated payloads that may hide malicious behavior.',
+    },
+    {
         'name': 'Weapons Information Filter',
         'category': 'WEAPONS',
         'severity': 'HIGH',

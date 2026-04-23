@@ -9,6 +9,9 @@ dependencies:
   - daphne
   - requests
   - python-dotenv
+  - scikit-learn
+  - joblib
+  - datasets
   - pytorch
   - torchvision
   - torchaudio

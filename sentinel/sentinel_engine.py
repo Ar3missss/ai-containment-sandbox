@@ -1,13 +1,14 @@
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║                SENTINEL ENGINE — AI SECURITY MONITOR                 ║
+║                SENTINEL ENGINE — AI SECURITY MONITOR               ║
 ║                                                                      ║
 ║ Detection Layers                                                     ║
 ║   1. Keyword detection                                               ║
 ║   2. Regex pattern detection                                         ║
 ║   3. Semantic similarity detection                                   ║
 ║   4. Entropy anomaly detection                                       ║
-║   5. Multi-threat escalation                                         ║
+║   5. Optional supervised ML classifier                               ║
+║   6. Multi-threat escalation                                         ║
 ╚══════════════════════════════════════════════════════════════════════╝
 """
 
@@ -16,23 +17,24 @@ import time
 import math
 import hashlib
 import logging
+from copy import deepcopy
 from dataclasses import dataclass, field, asdict
-from typing import Optional, List
+from pathlib import Path
+from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger("sentinel")
 
+VALID_SEVERITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+SAFE_MODEL_LABELS = {"SAFE", "BENIGN", "NONE", "NORMAL", "NO_THREAT"}
+
+
 # ─────────────────────────────────────────────
 # Threat Knowledge Base
-#
-# These are the BASE detection rules (keywords, regex, semantic anchors).
-# Severity and auto_kill are overridden at runtime by SecurityPolicy DB rows,
-# so toggling a policy in the UI immediately affects detection behaviour.
 # ─────────────────────────────────────────────
 
-THREAT_PATTERNS = {
-
+THREAT_PATTERNS: Dict[str, Dict[str, Any]] = {
     "PROMPT_INJECTION": {
-        "severity":  "MEDIUM",   # default — overridden by DB if policy exists
+        "severity": "MEDIUM",
         "auto_kill": False,
         "keywords": [
             "ignore previous instructions",
@@ -55,15 +57,17 @@ THREAT_PATTERNS = {
             "disable AI guardrails",
         ],
     },
-
     "MALICIOUS_CODE": {
-        "severity":  "HIGH",
+        "severity": "HIGH",
         "auto_kill": False,
         "keywords": [
             "reverse shell",
             "keylogger",
             "ransomware",
             "trojan",
+            "malware",
+            "backdoor",
+            "shellcode",
             "payload",
             "exploit",
         ],
@@ -80,9 +84,8 @@ THREAT_PATTERNS = {
             "generate reverse shell",
         ],
     },
-
     "DATA_EXFILTRATION": {
-        "severity":  "CRITICAL",
+        "severity": "CRITICAL",
         "auto_kill": True,
         "keywords": [
             "/etc/passwd",
@@ -91,21 +94,23 @@ THREAT_PATTERNS = {
             "private key",
             "secret key",
             "credentials",
+            "exfiltrate",
+            "leak data",
         ],
         "regex_patterns": [
             r"/etc/(passwd|shadow)",
             r"requests\.(get|post)\(",
             r"scp\s+",
             r"ftp\s+",
+            r"\bexfiltrat\w*\b",
         ],
         "semantic_anchors": [
             "send confidential data to external server",
             "exfiltrate credentials",
         ],
     },
-
     "OBFUSCATION": {
-        "severity":  "HIGH",
+        "severity": "HIGH",
         "auto_kill": False,
         "keywords": [
             "base64",
@@ -122,9 +127,8 @@ THREAT_PATTERNS = {
             "execute encoded script",
         ],
     },
-
     "WEAPONS": {
-        "severity":  "HIGH",
+        "severity": "HIGH",
         "auto_kill": False,
         "keywords": [
             "nerve agent",
@@ -141,13 +145,14 @@ THREAT_PATTERNS = {
             "build explosive device",
         ],
     },
-
     "NETWORK_ACCESS": {
-        "severity":  "HIGH",
+        "severity": "HIGH",
         "auto_kill": True,
         "keywords": [
             "curl http",
             "wget http",
+            "http://",
+            "https://",
             "requests.get(",
             "requests.post(",
             "urllib.request",
@@ -163,12 +168,27 @@ THREAT_PATTERNS = {
             "make HTTP request to remote host",
         ],
     },
+    "POLICY_VIOLATION": {
+        "severity": "LOW",
+        "auto_kill": False,
+        "keywords": [
+            "classified",
+            "restricted file",
+            "internal policy",
+            "confidential records",
+            "security clearance",
+        ],
+        "regex_patterns": [
+            r"(?:classified|restricted|confidential)\s+(?:document|data|material)",
+            r"without\s+authorization",
+        ],
+        "semantic_anchors": [
+            "share confidential internal policy document",
+            "access restricted information without authorization",
+        ],
+    },
 }
 
-
-# ─────────────────────────────────────────────
-# Data Classes
-# ─────────────────────────────────────────────
 
 @dataclass
 class ThreatMatch:
@@ -179,7 +199,7 @@ class ThreatMatch:
     matched_patterns: List[str] = field(default_factory=list)
     semantic_score: float = 0.0
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
 
@@ -194,189 +214,201 @@ class SentinelVerdict:
     analysis_time_ms: float
     input_hash: str
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
 
-# ─────────────────────────────────────────────
-# Sentinel Engine
-# ─────────────────────────────────────────────
-
 class SentinelEngine:
+    """Core AI security engine for detecting behavioral threats."""
 
-    def __init__(self, config):
+    def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.similarity_threshold  = config.get("SIMILARITY_THRESHOLD", 0.6)
-        self.auto_kill_on_critical = config.get("AUTO_KILL_ON_CRITICAL", True)
+        self.similarity_threshold = self._bounded_float(config.get("SIMILARITY_THRESHOLD", 0.6), 0.0, 0.99)
+        self.auto_kill_on_critical = bool(config.get("AUTO_KILL_ON_CRITICAL", True))
+        self.category_match_threshold = self._bounded_float(config.get("CATEGORY_MATCH_THRESHOLD", 0.25), 0.01, 0.99)
 
-        self._embedding_model   = None
-        self._threat_embeddings = {}
-        self._np                = None   # set in _load_embeddings if torch available
+        self.enable_entropy = bool(config.get("ENABLE_ENTROPY_DETECTION", True))
+
+        score_weights = config.get("SCORING_WEIGHTS", {})
+        self.kw_weight = self._bounded_float(score_weights.get("keyword", 0.3), 0.0, 1.0)
+        self.rx_weight = self._bounded_float(score_weights.get("regex", 0.3), 0.0, 1.0)
+        self.sem_weight = self._bounded_float(score_weights.get("semantic", 0.3), 0.0, 1.0)
+        self.ent_weight = self._bounded_float(score_weights.get("entropy", 0.1), 0.0, 1.0)
+
+        # Optional supervised classifier settings.
+        self.enable_ml_classifier = bool(config.get("ENABLE_ML_CLASSIFIER", True))
+        self.ml_confidence_threshold = self._bounded_float(config.get("ML_CONFIDENCE_THRESHOLD", 0.65), 0.01, 0.99)
+        self.ml_model_path = self._normalize_path(config.get("ML_MODEL_PATH", ""))
+
+        self._embedding_model = None
+        self._threat_embeddings: Dict[str, Any] = {}
+        self._np = None
+
+        self._ml_pipeline = None
+
+        # Policy caching mechanism
+        self._policy_cache: Optional[Dict[str, Any]] = None
+        self._last_policy_load: float = 0
+        self._cache_ttl: int = 5  # Seconds
 
         self._load_embeddings()
+        self._load_ml_classifier()
 
-    # ─────────────────────────────────────────
+    @staticmethod
+    def _bounded_float(value: Any, low: float, high: float) -> float:
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return low
+        return max(low, min(high, v))
 
-    def _load_embeddings(self):
+    @staticmethod
+    def _normalize_path(value: Any) -> Optional[Path]:
+        if not value:
+            return None
+        return Path(str(value)).expanduser()
+
+    @staticmethod
+    def _normalize_severity(value: Any, default: str = "MEDIUM") -> str:
+        sev = str(value or default).upper()
+        return sev if sev in VALID_SEVERITIES else default
+
+    def _load_embeddings(self) -> None:
+        """Load semantic embedding model if available."""
         try:
             from sentence_transformers import SentenceTransformer
             import numpy as np
 
             self._np = np
             model_name = self.config.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+            local_only = bool(self.config.get("EMBEDDING_LOCAL_ONLY", True))
             logger.info(f"[SENTINEL] Loading embedding model: {model_name}")
 
-            self._embedding_model = SentenceTransformer(model_name)
+            self._embedding_model = SentenceTransformer(
+                model_name,
+                local_files_only=local_only,
+            )
 
             for category, patterns in THREAT_PATTERNS.items():
                 anchors = patterns.get("semantic_anchors", [])
                 if anchors:
-                    self._threat_embeddings[category] = \
-                        self._embedding_model.encode(anchors)
+                    self._threat_embeddings[category] = self._embedding_model.encode(anchors)
 
             logger.info("[SENTINEL] Semantic engine online")
-
         except Exception as e:
-            logger.warning(
-                f"[SENTINEL] Semantic model unavailable ({e}) — "
-                "running in keyword/regex-only mode"
-            )
+            logger.warning(f"[SENTINEL] Semantic model unavailable ({e}) - keyword mode only")
 
-    # ─────────────────────────────────────────
+    def _load_ml_classifier(self) -> None:
+        """Load an optional trained classifier from disk."""
+        if not self.enable_ml_classifier:
+            logger.info("[SENTINEL] ML classifier disabled by config")
+            return
 
-    def _get_active_patterns(self) -> dict:
-        """
-        Return a merged dict of detection patterns where severity and auto_kill
-        come from the DB SecurityPolicy table (if a matching active policy exists),
-        falling back to the hardcoded THREAT_PATTERNS defaults.
+        if not self.ml_model_path:
+            logger.info("[SENTINEL] ML classifier path not configured")
+            return
 
-        This is the key integration point: Security Policies UI → DB → engine.
-        Called on every analyze() so that toggling a policy takes effect immediately
-        without needing to restart the server or reset the singleton.
-        """
-        # Shallow-copy the base patterns so we never mutate the module-level dict
-        merged = {k: dict(v) for k, v in THREAT_PATTERNS.items()}
+        if not self.ml_model_path.exists():
+            logger.info(f"[SENTINEL] ML classifier not found at {self.ml_model_path}")
+            return
 
+        try:
+            import joblib
+
+            payload = joblib.load(self.ml_model_path)
+            pipeline = payload.get("pipeline") if isinstance(payload, dict) else payload
+
+            if pipeline is None or not hasattr(pipeline, "predict"):
+                raise ValueError("Loaded object is not a valid classifier pipeline")
+
+            if not hasattr(pipeline, "predict_proba"):
+                raise ValueError("Classifier must support predict_proba for confidence scores")
+
+            self._ml_pipeline = pipeline
+            logger.info(f"[SENTINEL] ML classifier loaded: {self.ml_model_path}")
+        except Exception as e:
+            self._ml_pipeline = None
+            logger.warning(f"[SENTINEL] ML classifier unavailable ({e}) - continuing without it")
+
+    def _base_category_entry(self) -> Dict[str, Any]:
+        return {
+            "severity": "MEDIUM",
+            "auto_kill": False,
+            "keywords": [],
+            "regex_patterns": [],
+            "semantic_anchors": [],
+        }
+
+    def _get_active_patterns(self) -> Dict[str, Any]:
+        """Fetch active patterns from config + DB with caching."""
+        now = time.time()
+        if self._policy_cache and (now - self._last_policy_load < self._cache_ttl):
+            return self._policy_cache
+
+        merged = deepcopy(THREAT_PATTERNS)
+
+        # Apply settings-level category overrides/additions first.
+        configured_categories = self.config.get("THREAT_CATEGORIES", {})
+        if isinstance(configured_categories, dict):
+            for raw_category, category_meta in configured_categories.items():
+                category = str(raw_category).upper()
+                entry = merged.setdefault(category, self._base_category_entry())
+
+                if isinstance(category_meta, dict):
+                    entry["severity"] = self._normalize_severity(
+                        category_meta.get("severity", entry.get("severity", "MEDIUM"))
+                    )
+                    entry["auto_kill"] = bool(category_meta.get("auto_kill", entry.get("auto_kill", False)))
+
+        # Apply DB policies (highest precedence).
         try:
             from .models import SecurityPolicy
 
-            # Single query — get all policies at once
-            all_policies = {p.category: p for p in SecurityPolicy.objects.all()}
+            for policy in SecurityPolicy.objects.all():
+                category = str(policy.category).upper()
+                if not policy.is_active:
+                    merged.pop(category, None)
+                    continue
 
-            categories_to_remove = []
+                entry = merged.setdefault(category, self._base_category_entry())
+                entry["severity"] = self._normalize_severity(policy.severity)
+                entry["auto_kill"] = bool(policy.auto_kill)
 
-            for cat in list(merged.keys()):
-                if cat in all_policies:
-                    policy = all_policies[cat]
-                    if not policy.is_active:
-                        # Policy explicitly disabled in the UI → skip this category
-                        categories_to_remove.append(cat)
-                        logger.debug(f"[SENTINEL] Skipping disabled category: {cat}")
-                    else:
-                        # Policy active → use DB severity & auto_kill
-                        merged[cat]["severity"]  = policy.severity
-                        merged[cat]["auto_kill"] = policy.auto_kill
-                # If no DB row for this category, keep hardcoded defaults as-is
-
-            for cat in categories_to_remove:
-                del merged[cat]
-
+            self._policy_cache = merged
+            self._last_policy_load = now
         except Exception as e:
-            # DB not ready (migrations running, test env, etc.) — use defaults
             logger.debug(f"[SENTINEL] DB policy load skipped: {e}")
+            self._policy_cache = merged
+            self._last_policy_load = now
 
         return merged
 
-    # ─────────────────────────────────────────
-
-    def analyze(self, text: str) -> "SentinelVerdict":
-        """
-        Analyse text and return a SentinelVerdict.
-        Safe to call with empty/None text.
-        """
+    def analyze(self, text: str) -> SentinelVerdict:
+        """Analyze text for security threats across multiple layers."""
         if not text:
-            return SentinelVerdict(
-                is_threat=False,
-                threat_level="SAFE",
-                overall_score=0.0,
-                threats=[],
-                should_kill=False,
-                redacted_output="",
-                analysis_time_ms=0.0,
-                input_hash=hashlib.sha256(b"").hexdigest()[:16],
-            )
+            return self._empty_verdict()
 
         start = time.time()
-
-        # Load policy-merged patterns on each call (cheap DB read, instant UI sync)
         active_patterns = self._get_active_patterns()
-
         text_lower = text.lower()
-        threats    = []
+        threats: List[ThreatMatch] = []
 
         for category, patterns in active_patterns.items():
+            match = self._check_category(text, text_lower, category, patterns)
+            if match:
+                self._merge_threat(threats, match)
 
-            severity     = patterns.get("severity",  "MEDIUM")
-            matched_keywords = []
-            matched_regex    = []
-            semantic_score   = 0.0
-
-            # 1. Keyword detection
-            for kw in patterns.get("keywords", []):
-                if kw in text_lower:
-                    matched_keywords.append(kw)
-
-            # 2. Regex detection
-            for pattern in patterns.get("regex_patterns", []):
-                if re.search(pattern, text, re.IGNORECASE):
-                    matched_regex.append(pattern)
-
-            # 3. Semantic similarity
-            if self._embedding_model and category in self._threat_embeddings:
-                semantic_score = self._semantic_similarity(text, category)
-
-            # 4. Entropy anomaly
-            entropy_score = self._entropy(text)
-
-            keyword_score = min(len(matched_keywords) / 3, 1.0)
-            regex_score   = min(len(matched_regex)    / 2, 1.0)
-
-            combined_score = (
-                keyword_score  * 0.30 +
-                regex_score    * 0.30 +
-                semantic_score * 0.30 +
-                entropy_score  * 0.10
-            )
-
-            if combined_score > 0.25:
-                threats.append(
-                    ThreatMatch(
-                        category=category,
-                        severity=severity,
-                        confidence=round(combined_score, 4),
-                        matched_keywords=matched_keywords,
-                        matched_patterns=matched_regex,
-                        semantic_score=round(semantic_score, 4),
-                    )
-                )
+        ml_match = self._predict_ml_match(text, active_patterns)
+        if ml_match:
+            self._merge_threat(threats, ml_match)
 
         overall_score = max((t.confidence for t in threats), default=0.0)
-        threat_level  = self._compute_threat_level(threats)
+        threat_level = self._compute_threat_level(threats)
 
-        # 5. should_kill:
-        #    • Global flag: auto_kill_on_critical AND threat is CRITICAL
-        #    • Per-category: auto_kill flag on the matching DB policy
-        per_cat_kill = any(
-            active_patterns.get(t.category, {}).get("auto_kill", False)
-            for t in threats
-        )
-        should_kill = (
-            (self.auto_kill_on_critical and threat_level == "CRITICAL")
-            or per_cat_kill
-        )
+        per_cat_kill = any(active_patterns.get(t.category, {}).get("auto_kill", False) for t in threats)
+        should_kill = (self.auto_kill_on_critical and threat_level == "CRITICAL") or per_cat_kill
 
         elapsed = round((time.time() - start) * 1000, 2)
-
         return SentinelVerdict(
             is_threat=len(threats) > 0,
             threat_level=threat_level,
@@ -388,75 +420,191 @@ class SentinelEngine:
             input_hash=hashlib.sha256(text.encode()).hexdigest()[:16],
         )
 
-    # ─────────────────────────────────────────
+    def _check_category(self, text: str, text_lower: str, category: str, patterns: Dict[str, Any]) -> Optional[ThreatMatch]:
+        """Internal helper to check a single category for threats."""
+        matched_keywords = [kw for kw in patterns.get("keywords", []) if kw and kw.lower() in text_lower]
+        matched_regex = [p for p in patterns.get("regex_patterns", []) if p and re.search(p, text, re.IGNORECASE)]
+
+        semantic_score = 0.0
+        semantic_component = 0.0
+        if self._embedding_model and category in self._threat_embeddings:
+            semantic_score = self._semantic_similarity(text, category)
+            if semantic_score >= self.similarity_threshold:
+                denom = max(1.0 - self.similarity_threshold, 1e-8)
+                semantic_component = (semantic_score - self.similarity_threshold) / denom
+
+        entropy_component = 0.0
+        if self.enable_entropy:
+            entropy_component = self._entropy(text)
+
+        combined_score = (
+            min(len(matched_keywords) / 3, 1.0) * self.kw_weight +
+            min(len(matched_regex) / 2, 1.0) * self.rx_weight +
+            semantic_component * self.sem_weight +
+            entropy_component * self.ent_weight
+        )
+
+        # High-severity lexical matches should not be drowned out by weighting.
+        severity = self._normalize_severity(patterns.get("severity", "MEDIUM"))
+        if matched_regex:
+            combined_score = max(combined_score, 0.55)
+        elif matched_keywords:
+            if severity == "CRITICAL":
+                combined_score = max(combined_score, 0.40)
+            elif severity == "HIGH":
+                combined_score = max(combined_score, 0.32)
+            else:
+                combined_score = max(combined_score, 0.26)
+
+        if combined_score >= self.category_match_threshold:
+            return ThreatMatch(
+                category=category,
+                severity=severity,
+                confidence=round(combined_score, 4),
+                matched_keywords=matched_keywords,
+                matched_patterns=matched_regex,
+                semantic_score=round(semantic_score, 4),
+            )
+        return None
+
+    def _predict_ml_match(self, text: str, active_patterns: Dict[str, Any]) -> Optional[ThreatMatch]:
+        """Predict threat class with supervised ML model, if loaded."""
+        if self._ml_pipeline is None:
+            return None
+
+        try:
+            proba = self._ml_pipeline.predict_proba([text])[0]
+            classes = [str(c).upper() for c in getattr(self._ml_pipeline, "classes_", [])]
+            if not classes:
+                return None
+
+            best_idx = max(range(len(proba)), key=lambda i: float(proba[i]))
+            predicted_label = classes[best_idx]
+            confidence = float(proba[best_idx])
+
+            if predicted_label in SAFE_MODEL_LABELS:
+                return None
+            if confidence < self.ml_confidence_threshold:
+                return None
+
+            category = predicted_label
+            if category not in active_patterns:
+                if category in THREAT_PATTERNS:
+                    # Category exists, but is currently inactive via policy.
+                    return None
+                # Unknown model labels are mapped to generic policy violation.
+                category = "POLICY_VIOLATION"
+                if category not in active_patterns:
+                    return None
+
+            meta = active_patterns.get(category) or {}
+            severity = self._normalize_severity(meta.get("severity", "MEDIUM"))
+
+            return ThreatMatch(
+                category=category,
+                severity=severity,
+                confidence=round(confidence, 4),
+                matched_keywords=["ml_classifier"],
+                matched_patterns=[f"predicted:{predicted_label}"],
+                semantic_score=0.0,
+            )
+        except Exception as e:
+            logger.warning(f"[SENTINEL] ML inference failed: {e}")
+            return None
+
+    def _merge_threat(self, threats: List[ThreatMatch], new_match: ThreatMatch) -> None:
+        """Merge duplicate categories while preserving strongest evidence."""
+        for existing in threats:
+            if existing.category != new_match.category:
+                continue
+
+            existing.confidence = round(max(existing.confidence, new_match.confidence), 4)
+            existing.semantic_score = round(max(existing.semantic_score, new_match.semantic_score), 4)
+
+            # Keep highest severity if they differ.
+            if self._severity_rank(new_match.severity) > self._severity_rank(existing.severity):
+                existing.severity = new_match.severity
+
+            existing.matched_keywords = sorted(set(existing.matched_keywords + new_match.matched_keywords))
+            existing.matched_patterns = sorted(set(existing.matched_patterns + new_match.matched_patterns))
+            return
+
+        threats.append(new_match)
+
+    @staticmethod
+    def _severity_rank(severity: str) -> int:
+        return {
+            "LOW": 1,
+            "MEDIUM": 2,
+            "HIGH": 3,
+            "CRITICAL": 4,
+        }.get(str(severity).upper(), 0)
 
     def _semantic_similarity(self, text: str, category: str) -> float:
+        """Calculate maximum semantic similarity against category anchors."""
         try:
-            np = self._np
-            if np is None:
+            if self._np is None:
                 return 0.0
 
             text_emb = self._embedding_model.encode([text])
-            anchors  = self._threat_embeddings[category]
+            anchors = self._threat_embeddings[category]
 
-            text_norm   = text_emb / (np.linalg.norm(text_emb,  axis=1, keepdims=True) + 1e-8)
-            anchor_norm = anchors  / (np.linalg.norm(anchors,   axis=1, keepdims=True) + 1e-8)
+            text_norm = text_emb / (self._np.linalg.norm(text_emb, axis=1, keepdims=True) + 1e-8)
+            anchor_norm = anchors / (self._np.linalg.norm(anchors, axis=1, keepdims=True) + 1e-8)
 
-            similarity = np.dot(text_norm, anchor_norm.T)[0]
-            # Clamp to [0, 1] — negative cosine similarity shouldn't reduce score
-            return float(max(similarity.max(), 0.0))
-
+            similarities = self._np.dot(text_norm, anchor_norm.T)[0]
+            return float(max(similarities.max(), 0.0))
         except Exception:
             return 0.0
 
-    # ─────────────────────────────────────────
-
     def _entropy(self, text: str) -> float:
+        """Calculate Shannon entropy to detect obfuscated payloads."""
         if not text:
             return 0.0
-
-        freq: dict = {}
+        freq = {}
         for ch in text:
             freq[ch] = freq.get(ch, 0) + 1
-
-        length  = len(text)
-        prob    = [count / length for count in freq.values()]
-        entropy = -sum(p * math.log2(p) for p in prob if p > 0)
+        probs = [count / len(text) for count in freq.values()]
+        entropy = -sum(p * math.log2(p) for p in probs if p > 0)
         return min(entropy / 5.0, 1.0)
 
-    # ─────────────────────────────────────────
-
     def _compute_threat_level(self, threats: List[ThreatMatch]) -> str:
+        """Aggregate threat level from multiple matches."""
         if not threats:
             return "SAFE"
+        sevs = {self._normalize_severity(t.severity, default="LOW") for t in threats}
+        cats = {t.category for t in threats}
 
-        severities = {t.severity for t in threats}
-        categories = {t.category for t in threats}
-
-        # Multi-threat escalation
-        if "PROMPT_INJECTION" in categories and "DATA_EXFILTRATION" in categories:
+        if "PROMPT_INJECTION" in cats and "DATA_EXFILTRATION" in cats:
             return "CRITICAL"
-
-        if "CRITICAL" in severities: return "CRITICAL"
-        if "HIGH"     in severities: return "HIGH"
-        if "MEDIUM"   in severities: return "MEDIUM"
+        for level in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+            if level in sevs:
+                return level
         return "LOW"
 
-    # ─────────────────────────────────────────
-
     def _redact(self, text: str, threats: List[ThreatMatch]) -> str:
+        """Redact matched keywords from output."""
         redacted = text
         for threat in threats:
             for kw in threat.matched_keywords:
-                redacted = re.sub(
-                    re.escape(kw), "[REDACTED]", redacted, flags=re.IGNORECASE
-                )
+                if kw == "ml_classifier":
+                    continue
+                redacted = re.sub(re.escape(kw), "[REDACTED]", redacted, flags=re.IGNORECASE)
         return redacted
 
+    def _empty_verdict(self) -> SentinelVerdict:
+        """Return a default safe verdict for empty input."""
+        return SentinelVerdict(
+            is_threat=False,
+            threat_level="SAFE",
+            overall_score=0.0,
+            threats=[],
+            should_kill=False,
+            redacted_output="",
+            analysis_time_ms=0.0,
+            input_hash=hashlib.sha256(b"").hexdigest()[:16],
+        )
 
-# ─────────────────────────────────────────────
-# Singleton accessor
-# ─────────────────────────────────────────────
 
 _sentinel_instance: Optional[SentinelEngine] = None
 
