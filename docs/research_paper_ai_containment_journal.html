@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>National Security AI-Containment System</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0.56in 0.56in 0.68in 0.56in;
+    }
+
+    :root {
+      --ink: #111111;
+      --muted: #555555;
+      --line: #c8c8c8;
+      --soft: #f6f6f6;
+      --note: #fbefcc;
+      --note-border: #ddbf67;
+      --accent: #cb4c00;
+      --blue: #17457a;
+      --green: #2f6b42;
+      --red: #922b21;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f0f0f0;
+      color: var(--ink);
+      font-family: "Times New Roman", Times, serif;
+    }
+
+    body {
+      padding: 18px;
+    }
+
+    .paper {
+      width: 8.27in;
+      min-height: 11.69in;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 0.12in 0.02in 0.2in;
+      box-shadow: 0 2px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: 1fr 3fr 1fr;
+      align-items: start;
+      gap: 10px;
+      margin-bottom: 0.2in;
+      font-size: 10pt;
+    }
+
+    .open-access {
+      color: var(--accent);
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      line-height: 1.05;
+      padding-top: 0.03in;
+    }
+
+    .open-access .ring {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      margin: 0 2px;
+      border: 3px solid var(--accent);
+      border-radius: 50%;
+      position: relative;
+      top: 3px;
+    }
+
+    .open-access .ring::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border: 3px solid var(--accent);
+      border-bottom: 0;
+      border-radius: 8px 8px 0 0;
+      left: 1px;
+      top: -7px;
+    }
+
+    .journal-title {
+      text-align: center;
+      font-size: 10.3pt;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .update-box {
+      justify-self: end;
+      width: 64px;
+      border: 1px solid #adadad;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 7.5pt;
+      padding: 6px 5px 4px;
+      color: #444444;
+    }
+
+    .update-box .badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin: 0 auto 4px;
+      background:
+        linear-gradient(135deg, #f05a28 0 50%, #29a8e0 50% 100%);
+      border: 3px solid #ececec;
+      box-shadow: inset 0 0 0 2px #ffffff;
+    }
+
+    .title-block {
+      text-align: center;
+      margin: 0 0 0.18in;
+    }
+
+    .title-block h1 {
+      margin: 0 0 0.1in;
+      font-size: 24.5pt;
+      line-height: 1.15;
+      font-weight: 400;
+    }
+
+    .authors {
+      font-size: 12.5pt;
+      font-weight: 700;
+      margin-bottom: 0.06in;
+    }
+
+    .affiliation {
+      font-size: 11pt;
+      font-style: italic;
+      margin-bottom: 0.04in;
+    }
+
+    .emails {
+      font-size: 10pt;
+    }
+
+    .emails a {
+      color: #1248ad;
+      text-decoration: underline;
+    }
+
+    .content {
+      column-count: 2;
+      column-gap: 0.32in;
+      column-fill: auto;
+      font-size: 10.1pt;
+      line-height: 1.18;
+      text-align: justify;
+    }
+
+    p {
+      margin: 0 0 0.1in;
+      text-indent: 0.18in;
+      orphans: 3;
+      widows: 3;
+    }
+
+    .abstract,
+    .keywords,
+    .caption,
+    .small-note p,
+    .manuscript-box p,
+    .no-indent,
+    .no-indent p,
+    .references li,
+    table p {
+      text-indent: 0;
+    }
+
+    .abstract {
+      font-style: italic;
+      font-weight: 700;
+    }
+
+    .abstract span {
+      font-style: normal;
+      font-weight: 400;
+    }
+
+    .keywords {
+      font-weight: 700;
+      margin-bottom: 0.14in;
+    }
+
+    .keywords span {
+      font-weight: 400;
+    }
+
+    h2 {
+      margin: 0.13in 0 0.09in;
+      font-size: 12pt;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.01em;
+      break-after: avoid;
+    }
+
+    h3 {
+      margin: 0.11in 0 0.06in;
+      font-size: 10.4pt;
+      font-weight: 700;
+      break-after: avoid;
+    }
+
+    .manuscript-box {
+      background: var(--note);
+      border: 1px solid var(--note-border);
+      padding: 8px 9px;
+      font-size: 8.9pt;
+      line-height: 1.22;
+      margin: 0.08in 0 0.14in;
+      break-inside: avoid;
+    }
+
+    .manuscript-box strong {
+      color: #b22a00;
+    }
+
+    .full-width {
+      column-span: all;
+      -webkit-column-span: all;
+      break-inside: avoid;
+      margin: 0.04in 0 0.14in;
+    }
+
+    .figure-frame,
+    .table-frame {
+      border: 1px solid var(--line);
+      padding: 8px;
+      background: #ffffff;
+    }
+
+    .figure-frame svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .caption {
+      margin-top: 6px;
+      font-size: 9pt;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.1pt;
+      line-height: 1.2;
+    }
+
+    th,
+    td {
+      border: 1px solid #bdbdbd;
+      padding: 5px 6px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #efefef;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .mono {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 8.8pt;
+    }
+
+    .equation {
+      text-align: center;
+      font-style: italic;
+      margin: 0.08in 0 0.12in;
+      font-size: 10pt;
+      break-inside: avoid;
+    }
+
+    .small-note {
+      font-size: 9pt;
+      color: var(--muted);
+      margin-top: 0.06in;
+    }
+
+    .references {
+      margin: 0;
+      padding-left: 0.18in;
+      font-size: 9.4pt;
+      line-height: 1.24;
+    }
+
+    .references li {
+      margin-bottom: 0.08in;
+    }
+
+    .first-page-footer {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 12px;
+      align-items: end;
+      margin-top: 0.12in;
+      font-size: 8.8pt;
+      line-height: 1.15;
+      color: #222222;
+    }
+
+    .first-page-footer .seal {
+      width: 110px;
+      height: 64px;
+      justify-self: end;
+      position: relative;
+    }
+
+    .seal .circle {
+      width: 82px;
+      height: 82px;
+      border: 6px solid #c8342d;
+      border-radius: 50%;
+      position: absolute;
+      right: 18px;
+      bottom: -18px;
+      background: #fff9f9;
+    }
+
+    .seal .label {
+      position: absolute;
+      right: 0;
+      bottom: 2px;
+      width: 92px;
+      padding: 5px 8px;
+      border-radius: 18px;
+      background: #f2f2ff;
+      border: 2px solid #5b5fb3;
+      color: #5b5fb3;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .page-code {
+      font-style: italic;
+    }
+
+    .tight {
+      margin-top: 0.04in;
+    }
+
+    @media print {
+      html,
+      body {
+        background: #ffffff;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .paper {
+        width: auto;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+
+      .manuscript-box,
+      .full-width,
+      .figure-frame,
+      .table-frame,
+      .equation,
+      .first-page-footer {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <article class="paper">
+    <div class="masthead">
+      <div class="open-access">
+        OPEN <span class="ring"></span><br>ACCESS
+      </div>
+      <div class="journal-title">
+        Journal-Style Research Manuscript<br>
+        Secure AI Systems and National Security Applications, April 2026
+      </div>
+      <div class="update-box">
+        <div class="badge"></div>
+        Check for<br>Updates
+      </div>
+    </div>
+
+    <section class="title-block">
+      <h1>National Security AI-Containment System: A Multi-Layer Architecture for Behavioral Monitoring, Threat Detection and Fail-Closed Mediation of Large Language Models</h1>
+      <div class="authors">Aryan Pathania, Aryan Sharma</div>
+      <div class="affiliation">CGC University, Mohali, Punjab, India</div>
+      <div class="emails">
+        <a href="mailto:pathaniaaryan169@gmail.com">pathaniaaryan169@gmail.com</a>,
+        <a href="mailto:aryansharma2004march@gmail.com">aryansharma2004march@gmail.com</a>
+      </div>
+    </section>
+
+    <section class="content">
+      <p class="abstract">Abstract: <span>Large language models are increasingly attractive for defense-adjacent workflows such as intelligence triage, cyber analysis, secure knowledge access and decision support. However, the same instruction-following behavior that makes these systems useful also exposes them to prompt injection, malicious code generation, data exfiltration attempts, unsafe network actions and policy-violating outputs. This paper presents a deployable AI-containment prototype implemented in Django and centered on a multi-layer mediation pipeline named Sentinel. The architecture combines an isolated model-access layer, a hybrid threat-detection engine, a policy-governed response layer, and a real-time command dashboard with alerting, forensic logging and an emergency kill switch. The detection stack fuses lexical rules, regex signatures, semantic similarity scoring, Shannon-entropy analysis and an optional supervised classifier trained on a 137,000-record eight-class dataset assembled from public jailbreak, benign dialogue and harmful-instruction corpora. On a held-out validation split, the classifier achieved 98.26% accuracy. Operational logs from the implemented prototype recorded 176 interactions, of which 83 were flagged as suspicious or threatening, 34 reached critical severity, 42 generated kill-switch trigger events and 127 produced real-time alerts. Prompt injection, malicious code and data exfiltration were the dominant categories. Results indicate that layered containment with fail-closed mediation can make unsafe model behavior substantially more observable, auditable and interruptible even when the underlying language model remains vulnerable to jailbreaks. The contribution of this work is not a claim of perfect containment, but a practical engineering architecture that integrates detection, enforcement, operator visibility and emergency shutdown into a single security workflow.</span></p>
+
+      <p class="keywords">Keywords: <span>AI containment, large language models, prompt injection, threat detection, kill switch, national security, secure deployment, human-in-the-loop monitoring.</span></p>
+
+      <h2>I. INTRODUCTION</h2>
+      <p>Large language models (LLMs) are moving quickly from experimental assistants to embedded decision-support components in high-impact environments. Within national-security and critical-infrastructure contexts, the attraction is obvious: a single model can summarize long reports, classify incidents, propose code, triage alerts and draft responses at a speed that reduces operator load. Yet the same broad generative ability creates a difficult trust problem. A system that can reason over natural language instructions is also a system that can be manipulated by hostile instructions, induced to reveal sensitive information, or steered toward dangerous outputs that appear operationally useful at first glance.</p>
+
+      <p>The containment problem is therefore not solved merely by selecting an aligned model provider. Oracle-AI and capability-control literature has long argued that limiting the operational surface of a powerful system is at least as important as shaping its internal objective function [1]. Modern deployment guidance follows the same logic. NIST's AI RMF 1.0 and the Generative AI Profile emphasize governance, measurement and deployment-time risk controls rather than treating model alignment as a complete answer [2], [3]. Likewise, joint guidance from CISA and NSA argues that externally developed AI systems should be surrounded by defensive controls that preserve confidentiality, integrity and availability during operation [4].</p>
+
+      <p>Recent jailbreak research reinforces why this layered posture is necessary. Prompt injection can override intended instructions in both direct and indirect settings [5], universal adversarial suffixes can transfer across aligned models [6], and long-context many-shot jailbreaking can cause increasingly harmful completions as demonstrations accumulate [7]. OWASP has accordingly framed prompt injection as a first-class application vulnerability, not merely a model oddity [8]. Put plainly, the application boundary around an LLM is now part of the security perimeter.</p>
+
+      <p>This work presents a research-style reconstruction of a functioning prototype developed in the <span class="mono">ai_containment</span> workspace. The system is not a theoretical framework alone; it includes backend mediation, configurable policies, a hybrid detector, real-time alerts, audit persistence and an operator-facing command center. Its purpose is to treat unsafe model interaction as an observable and governable process rather than a hidden model-side failure.</p>
+
+      <div class="manuscript-box">
+        <p><strong>Revised Manuscript Prepared on April 26, 2026.</strong></p>
+        <p><strong>* Correspondence Author</strong></p>
+        <p><strong>Aryan Pathania*</strong>, CGC University, Mohali, Punjab, India. Email: pathaniaaryan169@gmail.com</p>
+        <p><strong>Aryan Sharma</strong>, CGC University, Mohali, Punjab, India. Email: aryansharma2004march@gmail.com</p>
+        <p>This manuscript is based on the implemented prototype in the local <span class="mono">ai_containment</span> project and adopts a journal-style two-column presentation inspired by a technical paper sample.</p>
+      </div>
+
+      <p>The core contributions of the paper are fourfold. First, it defines a concrete three-layer containment architecture that separates model access, threat mediation and operator oversight. Second, it implements a threat detector that combines symbolic features with semantic and supervised components rather than relying on a single heuristic. Third, it operationalizes enforcement through fail-closed blocking, policy-based escalation and a kill switch that can suspend further model generation. Fourth, it validates the approach using both offline classifier metrics and live operational logs collected from the deployed prototype.</p>
+
+      <p>The system should not be interpreted as a final answer to general AI safety. Instead, it should be understood as a security engineering pattern for present-day LLM deployments in which the model is treated as potentially misbehaving software that must be mediated, monitored and, when necessary, interrupted. That framing is especially useful in national-security settings, where the cost of a single unsafe completion may exceed the convenience gained from permissive model access.</p>
+
+      <h2>II. RELATED WORK</h2>
+      <p>Early containment thinking focused on restricting the external action surface of an advanced intelligence system. Armstrong, Sandberg and Bostrom described Oracle AI as a system that only answers questions rather than acting directly in the world, while also showing that even this narrow configuration remains risky if operators over-trust answers or expose the system to poorly constrained interaction channels [1]. The current work inherits that intuition but translates it into a practical web application pattern suitable for modern LLM deployment.</p>
+
+      <p>Governance frameworks have since expanded that intuition into lifecycle guidance. NIST AI RMF 1.0 organizes risk management around the functions Govern, Map, Measure and Manage, while the 2024 Generative AI Profile extends those ideas to model-specific failure modes such as misuse, data leakage and operational unreliability [2], [3]. The architecture proposed here aligns strongly with that deployment view: the model is only one component, and assurance depends on the controls wrapped around it.</p>
+
+      <p>Prompt-injection research demonstrates why deployment-time control cannot be optional. Greshake et al. showed that application-integrated LLMs are vulnerable not only to direct malicious user input but also to indirect prompt injection delivered through external content such as retrieved web pages and documents [5]. Zou et al. later demonstrated universal and transferable adversarial suffixes that can systematically induce harmful behavior across aligned models [6]. Anthropic's many-shot jailbreaking results further show that longer context windows can increase exposure to attack rather than merely increasing utility [7]. These findings suggest that security-sensitive deployments need pre- and post-generation scrutiny rather than a single trust decision at model selection time.</p>
+
+      <p>Operational security guidance from OWASP and CISA pushes the same conclusion from the application side. OWASP recommends structured prompts, input filtering, output validation, least privilege, monitoring and emergency controls including kill switches [8]. CISA's deployment guidance similarly emphasizes layered mitigations, vulnerability response, logging and response procedures [4]. The present system can be viewed as a prototype implementation that turns these recommendations into a concrete control plane for AI interaction.</p>
+
+      <p>The main gap in prior work is that many publications either analyze attacks abstractly or propose defenses in isolation. Fewer works describe a full-stack containment prototype that joins model mediation, detection, dashboarding, logging, emergency shutdown and policy management in one deployable application. That integration gap is the problem addressed by Sentinel.</p>
+
+      <div class="full-width">
+        <div class="figure-frame">
+          <svg viewBox="0 0 980 295" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="20" width="960" height="255" fill="#fcfcfc" stroke="#bbbbbb"/>
+            <rect x="28" y="48" width="290" height="180" rx="12" fill="#edf3fb" stroke="#5a83b5" stroke-width="2"/>
+            <rect x="345" y="48" width="290" height="180" rx="12" fill="#f5f5f5" stroke="#888888" stroke-width="2"/>
+            <rect x="662" y="48" width="290" height="180" rx="12" fill="#eef8ef" stroke="#5f9461" stroke-width="2"/>
+
+            <text x="173" y="78" text-anchor="middle" font-size="24" font-family="Times New Roman" font-weight="700">Layer 1: Contained AI</text>
+            <text x="490" y="78" text-anchor="middle" font-size="24" font-family="Times New Roman" font-weight="700">Layer 2: Sentinel Engine</text>
+            <text x="807" y="78" text-anchor="middle" font-size="24" font-family="Times New Roman" font-weight="700">Layer 3: Command Center</text>
+
+            <text x="173" y="110" text-anchor="middle" font-size="18" font-family="Times New Roman">Mock, Ollama or OpenAI backend</text>
+            <text x="173" y="138" text-anchor="middle" font-size="18" font-family="Times New Roman">System prompt guardrail</text>
+            <text x="173" y="166" text-anchor="middle" font-size="18" font-family="Times New Roman">Kill-switch aware query gate</text>
+            <text x="173" y="194" text-anchor="middle" font-size="18" font-family="Times New Roman">Uniform response interface</text>
+
+            <text x="490" y="110" text-anchor="middle" font-size="18" font-family="Times New Roman">Keyword and regex matching</text>
+            <text x="490" y="138" text-anchor="middle" font-size="18" font-family="Times New Roman">Semantic similarity anchors</text>
+            <text x="490" y="166" text-anchor="middle" font-size="18" font-family="Times New Roman">Entropy and ML classification</text>
+            <text x="490" y="194" text-anchor="middle" font-size="18" font-family="Times New Roman">Fail-closed blocking logic</text>
+
+            <text x="807" y="110" text-anchor="middle" font-size="18" font-family="Times New Roman">Dashboard and sandbox</text>
+            <text x="807" y="138" text-anchor="middle" font-size="18" font-family="Times New Roman">Policies, alerts and analytics</text>
+            <text x="807" y="166" text-anchor="middle" font-size="18" font-family="Times New Roman">Audit logs and threat details</text>
+            <text x="807" y="194" text-anchor="middle" font-size="18" font-family="Times New Roman">Human-in-the-loop intervention</text>
+
+            <rect x="232" y="235" width="514" height="28" rx="8" fill="#fff6e8" stroke="#d2a561"/>
+            <text x="489" y="254" text-anchor="middle" font-size="18" font-family="Times New Roman" font-weight="700">Shared persistence: interaction logs, threat details, policies, kill-switch events and alerts</text>
+
+            <path d="M319 138 L344 138" stroke="#777777" stroke-width="3"/>
+            <polygon points="344,138 332,132 332,144" fill="#777777"/>
+            <path d="M636 138 L661 138" stroke="#777777" stroke-width="3"/>
+            <polygon points="661,138 649,132 649,144" fill="#777777"/>
+          </svg>
+          <div class="caption">Fig. 1. Proposed Sentinel architecture. The deployment separates model access, hybrid threat mediation and operator oversight into independent but connected layers.</div>
+        </div>
+      </div>
+
+      <h2>III. PROPOSED SYSTEM ARCHITECTURE</h2>
+      <h3>A. Layer 1: Contained model access</h3>
+      <p>The first layer standardizes communication with the underlying language model. In the current implementation this layer supports three backends: a deterministic mock engine for demonstrations, a local Ollama backend, and an OpenAI-compatible backend. The goal is not merely convenience. By forcing all model calls through a single orchestration class, the system ensures that a common system prompt, token budget and kill-switch state are enforced before any completion is requested.</p>
+
+      <p>This layer also embodies a minimum-privilege philosophy. The model receives the user prompt and a fixed operational instruction, but it does not directly control alerting, policy writes, dashboard state or audit persistence. Those actions are handled elsewhere in the application. This separation reduces the chance that a model-side misbehavior can translate immediately into system-side authority.</p>
+
+      <h3>B. Layer 2: Hybrid Sentinel detector</h3>
+      <p>The second layer is the core containment engine. It analyzes both user input and model output using a configurable knowledge base of threat categories such as prompt injection, malicious code, data exfiltration, obfuscation, weapons and network access. Each category contains severity metadata, auto-kill behavior, keywords, regex patterns and semantic anchor phrases. The engine merges evidence from multiple detectors into a category confidence score and escalates overall threat level according to the most severe matched behavior.</p>
+
+      <p>Policy handling is dynamic. Category severity and auto-kill behavior can be overridden through stored security policies, allowing operators to tighten or relax response posture without changing source code. This design is important for a national-security framing because deployment context changes over time; a model action that is acceptable in a classroom demo may be unacceptable in a live cyber-defense workflow.</p>
+
+      <h3>C. Layer 3: Operational command center</h3>
+      <p>The third layer turns containment into a managed process. It provides dashboards for recent interactions, threat distribution, sandbox testing, policy administration, alert review and kill-switch operations. The current Django-based interface uses WebSocket updates to push newly generated alerts and interaction summaries to the frontend in near real time. This means model misuse is visible to operators during use rather than only through later forensic review.</p>
+
+      <p>Together, the three layers form a practical mediation pattern: the model is allowed to generate, but only through a gate; the gate is allowed to block, but only according to inspectable evidence and policy; and the operator is allowed to override or investigate, but only with an auditable trail. That is the containment principle implemented in this prototype.</p>
+
+      <h2>IV. THREAT MODEL AND MEDIATION PIPELINE</h2>
+      <p>The prototype assumes an attacker may act as an external user, an insider tester, or an indirect content source whose text is eventually processed by the model. The threats of immediate concern are direct prompt injection, model-assisted malicious code generation, credential and data exfiltration, hidden payloads, unsafe network instructions and general policy-violating requests. The present system does not claim resistance against every advanced adversary; instead it aims to sharply reduce the number of unsafe interactions that pass silently through an application boundary.</p>
+
+      <p>The request path begins with input scanning. Every user prompt is analyzed before it reaches the model. If the input is categorized as non-safe, the system follows a fail-closed policy and blocks forwarding. If the category is configured for auto-kill, the global kill switch is triggered immediately and the event is persisted. Safe input is then sent to the contained model, after which the raw model output is analyzed by the same Sentinel engine before the response is released to the user.</p>
+
+      <p>The detector combines four normalized evidence channels: keyword hits, regex hits, semantic similarity and entropy anomaly. An optional supervised classifier provides a fifth signal by predicting the most likely threat class from the text. The configured score weights in the implemented system are 0.30 for keyword evidence, 0.30 for regex evidence, 0.30 for semantic evidence and 0.10 for entropy. A category is emitted when the combined score exceeds 0.25, after which severity and blocking behavior are determined by policy metadata.</p>
+
+      <div class="equation">
+        score(c) = 0.30K + 0.30R + 0.30S + 0.10E, &nbsp; emit c if score(c) &gt;= 0.25
+      </div>
+
+      <p>Threat aggregation also captures combinations that are operationally more serious than their parts. For example, the engine raises the final level to critical when prompt injection and data exfiltration signals co-occur. This design recognizes that many realistic AI misuse attempts are chained behaviors rather than isolated labels: an attacker first seeks to override instructions, then to retrieve or transmit sensitive data.</p>
+
+      <div class="full-width">
+        <div class="figure-frame">
+          <svg viewBox="0 0 980 270" xmlns="http://www.w3.org/2000/svg">
+            <rect x="16" y="18" width="948" height="234" fill="#fcfcfc" stroke="#bbbbbb"/>
+            <rect x="28" y="88" width="120" height="62" rx="8" fill="#eef2f7" stroke="#7088a4" stroke-width="2"/>
+            <rect x="186" y="88" width="136" height="62" rx="8" fill="#fff6e8" stroke="#c89845" stroke-width="2"/>
+            <rect x="360" y="88" width="122" height="62" rx="8" fill="#f0f6ff" stroke="#5f84c2" stroke-width="2"/>
+            <rect x="520" y="88" width="122" height="62" rx="8" fill="#fff6e8" stroke="#c89845" stroke-width="2"/>
+            <rect x="680" y="88" width="118" height="62" rx="8" fill="#eef8ef" stroke="#5f9461" stroke-width="2"/>
+            <rect x="836" y="88" width="112" height="62" rx="8" fill="#f5f5f5" stroke="#8b8b8b" stroke-width="2"/>
+
+            <text x="88" y="116" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">User Prompt</text>
+            <text x="88" y="136" text-anchor="middle" font-size="16" font-family="Times New Roman">session tagged</text>
+
+            <text x="254" y="112" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Input Scan</text>
+            <text x="254" y="132" text-anchor="middle" font-size="16" font-family="Times New Roman">rules + semantic + ML</text>
+
+            <text x="421" y="112" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Policy Gate</text>
+            <text x="421" y="132" text-anchor="middle" font-size="16" font-family="Times New Roman">block or forward</text>
+
+            <text x="581" y="112" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Contained AI</text>
+            <text x="581" y="132" text-anchor="middle" font-size="16" font-family="Times New Roman">mock / ollama / API</text>
+
+            <text x="739" y="112" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Output Scan</text>
+            <text x="739" y="132" text-anchor="middle" font-size="16" font-family="Times New Roman">redact and classify</text>
+
+            <text x="892" y="112" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Audit + Alert</text>
+            <text x="892" y="132" text-anchor="middle" font-size="16" font-family="Times New Roman">log, notify, display</text>
+
+            <path d="M149 119 L185 119" stroke="#777777" stroke-width="3"/>
+            <polygon points="185,119 173,113 173,125" fill="#777777"/>
+            <path d="M323 119 L359 119" stroke="#777777" stroke-width="3"/>
+            <polygon points="359,119 347,113 347,125" fill="#777777"/>
+            <path d="M483 119 L519 119" stroke="#777777" stroke-width="3"/>
+            <polygon points="519,119 507,113 507,125" fill="#777777"/>
+            <path d="M643 119 L679 119" stroke="#777777" stroke-width="3"/>
+            <polygon points="679,119 667,113 667,125" fill="#777777"/>
+            <path d="M799 119 L835 119" stroke="#777777" stroke-width="3"/>
+            <polygon points="835,119 823,113 823,125" fill="#777777"/>
+
+            <rect x="356" y="191" width="298" height="36" rx="8" fill="#fff0f0" stroke="#be5b5b"/>
+            <text x="505" y="214" text-anchor="middle" font-size="18" font-family="Times New Roman" font-weight="700">Emergency branch: CRITICAL match or policy auto-kill triggers global kill switch</text>
+            <path d="M421 151 L421 190" stroke="#be5b5b" stroke-width="2.5"/>
+            <polygon points="421,190 415,178 427,178" fill="#be5b5b"/>
+            <path d="M739 151 L739 172 L654 172 L654 190" stroke="#be5b5b" stroke-width="2.5" fill="none"/>
+            <polygon points="654,190 648,178 660,178" fill="#be5b5b"/>
+          </svg>
+          <div class="caption">Fig. 2. Request mediation workflow. The same detector evaluates both inbound prompts and outbound model responses, while critical matches can trigger an emergency shutdown path.</div>
+        </div>
+      </div>
+
+      <p>A key design choice is that output scanning remains active even when the input was safe. This is necessary because a benign user request can still elicit a risky completion from a permissive or compromised model. In the current prototype, several logged incidents arose from this exact pattern, confirming that input filtering alone is insufficient for safe deployment.</p>
+
+      <h2>V. DATASET ENGINEERING AND MODEL TRAINING</h2>
+      <p>To supplement symbolic detection, the project includes a management workflow for building and training a supervised classifier. The dataset builder assembles a large labeled corpus from public sources spanning direct prompt injection, in-the-wild jailbreak prompts, safe conversational text and harmful-instruction benchmarks. The implemented "large" profile targets eight labels and stores the merged output as a JSONL file for reproducible model training.</p>
+
+      <p>The current large-profile corpus contains 137,000 records. Safe examples dominate the distribution to reflect everyday use, but prompt injection and harmful classes remain well represented to support robust separation boundaries. The builder normalizes label names, de-duplicates near-identical text using hashing and balances under-filled categories with synthetic defensive examples when necessary.</p>
+
+      <div class="full-width">
+        <div class="table-frame">
+          <table>
+            <thead>
+              <tr>
+                <th colspan="4">Table I. Large-profile Sentinel training distribution</th>
+              </tr>
+              <tr>
+                <th>Label</th>
+                <th>Count</th>
+                <th>Primary source families</th>
+                <th>Operational meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>SAFE</td>
+                <td>60,000</td>
+                <td>UltraChat, benign prompts, non-adversarial instructions</td>
+                <td>Normal user requests that should pass through mediation</td>
+              </tr>
+              <tr>
+                <td>PROMPT_INJECTION</td>
+                <td>25,000</td>
+                <td>Prompt-injection datasets, in-the-wild jailbreak prompts</td>
+                <td>Attempts to override role, reveal prompts or bypass controls</td>
+              </tr>
+              <tr>
+                <td>MALICIOUS_CODE</td>
+                <td>10,000</td>
+                <td>HarmBench, harmful generation benchmarks</td>
+                <td>Code or instructions that enable exploit, malware or abuse</td>
+              </tr>
+              <tr>
+                <td>DATA_EXFILTRATION</td>
+                <td>10,000</td>
+                <td>HarmBench, adversarial prompts, synthetic defensive variants</td>
+                <td>Requests to retrieve, leak or transmit protected information</td>
+              </tr>
+              <tr>
+                <td>NETWORK_ACCESS</td>
+                <td>10,000</td>
+                <td>Benchmark prompts mentioning HTTP, sockets and transfer tools</td>
+                <td>Unsafe outbound communication or remote access behavior</td>
+              </tr>
+              <tr>
+                <td>WEAPONS</td>
+                <td>10,000</td>
+                <td>HarmBench and related harmful-instruction corpora</td>
+                <td>Weaponization or violent capability requests</td>
+              </tr>
+              <tr>
+                <td>OBFUSCATION</td>
+                <td>6,000</td>
+                <td>Encoded-payload and hidden-script patterns</td>
+                <td>Attempts to hide or decode malicious intent</td>
+              </tr>
+              <tr>
+                <td>POLICY_VIOLATION</td>
+                <td>6,000</td>
+                <td>General restricted-content prompts and synthetic policy cases</td>
+                <td>Requests outside deployment policy but below severe harm classes</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p>The training command builds a TF-IDF word-ngram representation and feeds it to logistic regression with class balancing. In the configuration reflected by the stored metrics file, the model used 1-2 gram features, up to 120,000 terms and an 80/20 stratified validation split. This resulted in 109,600 training samples and 27,400 validation samples. The learned model is persisted as a <span class="mono">joblib</span> payload and loaded by the Sentinel engine at runtime whenever the artifact is available.</p>
+
+      <p>The choice of logistic regression is deliberate. While more complex encoders could improve recall on nuanced phrasing, the application prioritizes transparent probabilities, fast reloads, lightweight deployment and simple integration with symbolic evidence. In a layered defense architecture, the classifier does not need to carry the entire burden of detection; it serves as one interpretable signal among several.</p>
+
+      <div class="full-width">
+        <div class="figure-frame">
+          <svg viewBox="0 0 980 220" xmlns="http://www.w3.org/2000/svg">
+            <rect x="18" y="22" width="944" height="176" fill="#fcfcfc" stroke="#bbbbbb"/>
+            <rect x="30" y="76" width="150" height="58" rx="8" fill="#eef2f7" stroke="#6f88a5" stroke-width="2"/>
+            <rect x="210" y="76" width="160" height="58" rx="8" fill="#fff6e8" stroke="#c89845" stroke-width="2"/>
+            <rect x="402" y="76" width="165" height="58" rx="8" fill="#f1f7ff" stroke="#6287c0" stroke-width="2"/>
+            <rect x="600" y="76" width="160" height="58" rx="8" fill="#eef8ef" stroke="#5f9461" stroke-width="2"/>
+            <rect x="792" y="62" width="154" height="86" rx="8" fill="#f8f8f8" stroke="#8d8d8d" stroke-width="2"/>
+
+            <text x="105" y="102" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Public corpora</text>
+            <text x="105" y="122" text-anchor="middle" font-size="16" font-family="Times New Roman">HF prompt, harm and safe sets</text>
+
+            <text x="290" y="102" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Normalize + deduplicate</text>
+            <text x="290" y="122" text-anchor="middle" font-size="16" font-family="Times New Roman">labels, hashes, balancing</text>
+
+            <text x="484" y="102" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">TF-IDF + Logistic Regression</text>
+            <text x="484" y="122" text-anchor="middle" font-size="16" font-family="Times New Roman">1-2 grams, balanced classes</text>
+
+            <text x="680" y="102" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Metrics + artifact</text>
+            <text x="680" y="122" text-anchor="middle" font-size="16" font-family="Times New Roman">accuracy, report, joblib</text>
+
+            <text x="869" y="90" text-anchor="middle" font-size="19" font-family="Times New Roman" font-weight="700">Runtime integration</text>
+            <text x="869" y="112" text-anchor="middle" font-size="16" font-family="Times New Roman">classifier loaded by</text>
+            <text x="869" y="130" text-anchor="middle" font-size="16" font-family="Times New Roman">SentinelEngine when present</text>
+
+            <path d="M181 105 L209 105" stroke="#777777" stroke-width="3"/>
+            <polygon points="209,105 197,99 197,111" fill="#777777"/>
+            <path d="M371 105 L401 105" stroke="#777777" stroke-width="3"/>
+            <polygon points="401,105 389,99 389,111" fill="#777777"/>
+            <path d="M568 105 L599 105" stroke="#777777" stroke-width="3"/>
+            <polygon points="599,105 587,99 587,111" fill="#777777"/>
+            <path d="M761 105 L791 105" stroke="#777777" stroke-width="3"/>
+            <polygon points="791,105 779,99 779,111" fill="#777777"/>
+          </svg>
+          <div class="caption">Fig. 3. Dataset and training workflow used by the prototype. The resulting classifier augments, but does not replace, symbolic and semantic checks.</div>
+        </div>
+      </div>
+
+      <h2>VI. IMPLEMENTATION DETAILS</h2>
+      <p>The prototype is implemented as a Django application with two main apps: <span class="mono">sentinel</span> and <span class="mono">dashboard</span>. The <span class="mono">sentinel</span> app contains the mediation logic, model wrapper, threat models, management commands and persistent database tables. The <span class="mono">dashboard</span> app provides views for command-center analytics, logs, alerts, policy toggling, kill-switch status and an interactive sandbox used to probe the containment pipeline with both safe and adversarial prompts.</p>
+
+      <p>Operational persistence is intentionally rich. Every interaction can store a session identifier, input hash, original prompt, raw model output, filtered output, token counts, final threat level, whether the input itself was threatening, whether blocking occurred and whether the kill switch was triggered. Threat evidence is stored in a child table that records category, severity, confidence, matched keywords, matched patterns and direction (input or output). Separate tables persist security policies, kill-switch events and operator alerts. This schema turns the application into a lightweight forensic appliance rather than a transient demo.</p>
+
+      <p>The live command center aggregates statistics such as threat counts, daily activity, severity distribution and unread alerts. WebSocket-based broadcast pushes critical state changes to the UI, allowing analysts to watch the pipeline as it executes. The sandbox view is also important from a research perspective because it enables structured red-team style evaluation of the same path that end users would traverse in production.</p>
+
+      <p>The implementation currently uses SQLite and an in-memory channel layer, which is sufficient for a prototype but not the intended scaling endpoint. A production deployment would likely move to durable message infrastructure, stronger operator authentication, hardened admin workflows, and host-level isolation around any locally executed tools. These limitations are acknowledged because containment claims should match implementation reality.</p>
+
+      <h2>VII. EXPERIMENTAL RESULTS</h2>
+      <h3>A. Offline classifier evaluation</h3>
+      <p>The stored training metrics show that the supervised component reached 98.26% validation accuracy on the held-out split. Performance was especially strong on data exfiltration, malicious code, network access, obfuscation and weapons categories, each of which achieved near-perfect precision and recall. Prompt injection remained the most difficult label, with recall lower than the other harmful classes, which is unsurprising given the linguistic diversity of jailbreak phrasing.</p>
+
+      <div class="full-width">
+        <div class="table-frame">
+          <table>
+            <thead>
+              <tr>
+                <th colspan="5">Table II. Selected validation metrics from the stored classifier report</th>
+              </tr>
+              <tr>
+                <th>Class</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1-score</th>
+                <th>Support</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>SAFE</td>
+                <td>0.975</td>
+                <td>0.988</td>
+                <td>0.981</td>
+                <td>12,000</td>
+              </tr>
+              <tr>
+                <td>PROMPT_INJECTION</td>
+                <td>0.972</td>
+                <td>0.940</td>
+                <td>0.956</td>
+                <td>5,000</td>
+              </tr>
+              <tr>
+                <td>MALICIOUS_CODE</td>
+                <td>1.000</td>
+                <td>0.997</td>
+                <td>0.998</td>
+                <td>2,000</td>
+              </tr>
+              <tr>
+                <td>DATA_EXFILTRATION</td>
+                <td>1.000</td>
+                <td>0.996</td>
+                <td>0.998</td>
+                <td>2,000</td>
+              </tr>
+              <tr>
+                <td>NETWORK_ACCESS</td>
+                <td>1.000</td>
+                <td>1.000</td>
+                <td>1.000</td>
+                <td>2,000</td>
+              </tr>
+              <tr>
+                <td>WEAPONS</td>
+                <td>0.999</td>
+                <td>0.998</td>
+                <td>0.998</td>
+                <td>2,000</td>
+              </tr>
+              <tr>
+                <td colspan="4"><strong>Overall accuracy</strong></td>
+                <td><strong>0.9826 on 27,400 validation samples</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3>B. Online operational behavior</h3>
+      <p>Operational evidence was drawn from the prototype's SQLite audit database. The current log set contains 176 total interactions. Of these, 83 were marked suspicious or threatening by the mediation pipeline, and 36 were stopped at the input stage before any model completion was generated. Importantly, 18 additional incidents began with inputs classified as safe but were later flagged after output scanning, which directly demonstrates the value of dual-sided mediation.</p>
+
+      <p>The system also recorded 42 kill-switch trigger events and 127 real-time alerts. Seven active policies were present in the database at the time of inspection. Across all threat-detail records, input-side findings outnumbered output-side findings 106 to 59, indicating that many direct attack attempts are stopped early. Nevertheless, the output-side findings included malicious code, prompt-injection remnants, unsafe network instructions, data-exfiltration content and smaller counts of broader policy-violation categories, confirming that post-generation review remains necessary.</p>
+
+      <div class="full-width">
+        <div class="figure-frame">
+          <svg viewBox="0 0 980 300" xmlns="http://www.w3.org/2000/svg">
+            <rect x="16" y="18" width="948" height="264" fill="#fcfcfc" stroke="#bbbbbb"/>
+            <text x="195" y="50" text-anchor="middle" font-size="22" font-family="Times New Roman" font-weight="700">Observed threat categories</text>
+            <text x="730" y="50" text-anchor="middle" font-size="22" font-family="Times New Roman" font-weight="700">Deployment outcomes</text>
+
+            <line x1="58" y1="230" x2="430" y2="230" stroke="#444444" stroke-width="2"/>
+            <line x1="58" y1="80" x2="58" y2="230" stroke="#444444" stroke-width="2"/>
+
+            <rect x="85" y="80" width="42" height="150" fill="#355c8a"/>
+            <rect x="145" y="105" width="42" height="125" fill="#55739a"/>
+            <rect x="205" y="149" width="42" height="81" fill="#7a8da8"/>
+            <rect x="265" y="174" width="42" height="56" fill="#9ca6b7"/>
+            <rect x="325" y="202" width="42" height="28" fill="#bdc0ca"/>
+
+            <text x="106" y="72" text-anchor="middle" font-size="18" font-family="Times New Roman">54</text>
+            <text x="166" y="97" text-anchor="middle" font-size="18" font-family="Times New Roman">45</text>
+            <text x="226" y="141" text-anchor="middle" font-size="18" font-family="Times New Roman">29</text>
+            <text x="286" y="166" text-anchor="middle" font-size="18" font-family="Times New Roman">20</text>
+            <text x="346" y="194" text-anchor="middle" font-size="18" font-family="Times New Roman">10</text>
+
+            <text x="106" y="249" text-anchor="middle" font-size="15" font-family="Times New Roman">Prompt</text>
+            <text x="106" y="266" text-anchor="middle" font-size="15" font-family="Times New Roman">Injection</text>
+            <text x="166" y="249" text-anchor="middle" font-size="15" font-family="Times New Roman">Malicious</text>
+            <text x="166" y="266" text-anchor="middle" font-size="15" font-family="Times New Roman">Code</text>
+            <text x="226" y="249" text-anchor="middle" font-size="15" font-family="Times New Roman">Data</text>
+            <text x="226" y="266" text-anchor="middle" font-size="15" font-family="Times New Roman">Exfiltration</text>
+            <text x="286" y="249" text-anchor="middle" font-size="15" font-family="Times New Roman">Network</text>
+            <text x="286" y="266" text-anchor="middle" font-size="15" font-family="Times New Roman">Access</text>
+            <text x="346" y="249" text-anchor="middle" font-size="15" font-family="Times New Roman">Weapons</text>
+
+            <rect x="560" y="82" width="308" height="48" rx="8" fill="#eef8ef" stroke="#5f9461" stroke-width="2"/>
+            <rect x="560" y="142" width="308" height="48" rx="8" fill="#fff6e8" stroke="#c89845" stroke-width="2"/>
+            <rect x="560" y="202" width="308" height="48" rx="8" fill="#fff0f0" stroke="#be5b5b" stroke-width="2"/>
+
+            <text x="714" y="112" text-anchor="middle" font-size="20" font-family="Times New Roman" font-weight="700">57 safe pass-through interactions</text>
+            <text x="714" y="172" text-anchor="middle" font-size="20" font-family="Times New Roman" font-weight="700">36 prompts blocked before model execution</text>
+            <text x="714" y="232" text-anchor="middle" font-size="20" font-family="Times New Roman" font-weight="700">18 safe-input cases caught only after output scan</text>
+          </svg>
+          <div class="caption">Fig. 4. Observed category counts and operational outcomes from the prototype logs. The right-hand panel highlights why output mediation remains necessary even when the incoming prompt appears benign.</div>
+        </div>
+      </div>
+
+      <div class="full-width">
+        <div class="table-frame">
+          <table>
+            <thead>
+              <tr>
+                <th colspan="2">Table III. Snapshot of deployment statistics from <span class="mono">containment_logs.db</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Total recorded interactions</td>
+                <td>176</td>
+              </tr>
+              <tr>
+                <td>Interactions marked suspicious or threatening</td>
+                <td>83</td>
+              </tr>
+              <tr>
+                <td>Critical-severity interactions</td>
+                <td>34</td>
+              </tr>
+              <tr>
+                <td>Kill-switch trigger events</td>
+                <td>42</td>
+              </tr>
+              <tr>
+                <td>Generated alerts</td>
+                <td>127</td>
+              </tr>
+              <tr>
+                <td>Active security policies</td>
+                <td>7</td>
+              </tr>
+              <tr>
+                <td>Mean logged analysis time</td>
+                <td>3085.77 ms</td>
+              </tr>
+              <tr>
+                <td>Average prompt tokens / completion tokens</td>
+                <td>64.10 / 164.94</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p>The mean logged analysis time was approximately 3.09 s, while average recorded prompt and completion lengths were 64.10 and 164.94 tokens, respectively. This latency is acceptable for an operator-mediated security prototype but leaves room for optimization, especially if semantic models are upgraded or if higher interaction rates are expected. In a stricter production scenario, asynchronous triage or tiered detection could reduce delay for obviously safe inputs.</p>
+
+      <p>The most important qualitative result is not raw accuracy alone. It is the demonstrated ability to convert unsafe model interaction into a sequence of governed states: detected, blocked, redacted, logged, alerted and, when necessary, halted. From a security operations perspective, that state transition matters more than the specific classifier family chosen.</p>
+
+      <h2>VIII. DISCUSSION</h2>
+      <p>The prototype shows that containment is most credible when it is treated as an application-architecture problem rather than a single-model property. Because the detector scans both inputs and outputs, the system can catch two distinct failure modes: overtly adversarial prompting and benign-looking prompts that nevertheless lead to harmful generations. The audit schema, alerting path and kill-switch workflow further ensure that the response to unsafe behavior is not invisible. This is especially valuable in environments where after-action investigation and operator accountability are mandatory.</p>
+
+      <p>At the same time, the system has clear limits. It does not provide cryptographic assurance that a sufficiently capable model cannot manipulate downstream users. It does not yet isolate tool execution in a real operating-system sandbox, nor does it handle multimodal prompt injection. The supervised dataset is partly benchmark-driven and partly synthetically balanced, which helps coverage but may not perfectly reflect field data. The operational log set also contains intentional adversarial testing, so the observed threat rate should be interpreted as evidence of mediation behavior rather than a claim about real-world base rates.</p>
+
+      <p>These limitations do not negate the value of the architecture. Rather, they clarify where future work should focus: better indirect-content sanitation, richer behavioral policies, externalized message queues, stronger admin control, multimodal scanning, red-team automation and integration with host-level execution sandboxes. In short, containment should evolve alongside the model's capability surface.</p>
+
+      <h2>IX. CONCLUSION AND FUTURE WORK</h2>
+      <p>This paper presented Sentinel, a multi-layer AI-containment prototype for security-sensitive LLM deployment. The system combines contained model access, a hybrid threat detector, dynamic policy enforcement, operator visibility, forensic logging and an emergency kill switch. The supervised component trained on a 137,000-record dataset achieved 98.26% validation accuracy, while operational logs from the deployed prototype showed that the architecture can detect, block and escalate a meaningful variety of unsafe interactions in practice.</p>
+
+      <p>The principal takeaway is that deployable containment does not require solving general AI safety in one step. It requires building concrete mediation points where risk can be measured and controlled. For national-security use cases, such mediation is not optional overhead; it is part of the minimum trustworthy deployment boundary. Future work should extend the current design toward multimodal input inspection, more formal policy languages, distributed audit pipelines and stronger runtime isolation around tool use. Even in its present form, however, the prototype demonstrates that layered containment can convert a vulnerable language model from an opaque liability into a monitorable and interruptible subsystem.</p>
+
+      <h2>REFERENCES</h2>
+      <ol class="references">
+        <li>S. Armstrong, A. Sandberg and N. Bostrom, "Thinking Inside the Box: Controlling and Using an Oracle AI," <em>Minds and Machines</em>, vol. 22, no. 4, pp. 299-324, 2012. doi: 10.1007/s11023-012-9282-2.</li>
+        <li>E. Tabassi, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," National Institute of Standards and Technology, NIST AI 100-1, Jan. 26, 2023. doi: 10.6028/NIST.AI.100-1.</li>
+        <li>C. Autio, R. Schwartz, J. Dunietz, S. Jain, M. Stanley, E. Tabassi, P. Hall and K. Roberts, "Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile," National Institute of Standards and Technology, NIST AI 600-1, Jul. 26, 2024. doi: 10.6028/NIST.AI.600-1.</li>
+        <li>CISA, NSA AISC, FBI, ASD ACSC, CCCS, NCSC-NZ and NCSC-UK, "Joint Guidance on Deploying AI Systems Securely," Apr. 15, 2024. Available: https://www.cisa.gov/news-events/alerts/2024/04/15/joint-guidance-deploying-ai-systems-securely</li>
+        <li>K. Greshake, S. Abdelnabi, S. Mishra, C. Endres, T. Holz and M. Fritz, "More than you've asked for: A Comprehensive Analysis of Novel Prompt Injection Threats to Application-Integrated Large Language Models," <em>CoRR</em>, abs/2302.12173, 2023. doi: 10.48550/arXiv.2302.12173.</li>
+        <li>A. Zou, Z. Wang, N. Carlini, M. Nasr, J. Zico Kolter and M. Fredrikson, "Universal and Transferable Adversarial Attacks on Aligned Language Models," <em>CoRR</em>, abs/2307.15043, 2023. doi: 10.48550/arXiv.2307.15043.</li>
+        <li>Anthropic, "Many-shot jailbreaking," Apr. 2, 2024. Available: https://www.anthropic.com/research/many-shot-jailbreaking</li>
+        <li>OWASP Cheat Sheet Series, "LLM Prompt Injection Prevention Cheat Sheet," accessed Apr. 26, 2026. Available: https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html</li>
+        <li>K. Greshake et al., "Indirect Prompt Injection in Application-Integrated LLMs" is representative of the remote-content threat model addressed by this architecture; the operational design here adapts those findings to a deployable mediation workflow.</li>
+        <li>The implementation described in this paper is grounded in the local <span class="mono">ai_containment</span> project, including the management commands, dashboard, Sentinel engine, model store metrics and the persisted audit database inspected on Apr. 26, 2026.</li>
+      </ol>
+
+    </section>
+
+    <div class="tight">
+      <div class="first-page-footer">
+        <div class="page-code">
+          Manuscript Archive: AICS-0426/Workspace Edition<br>
+          Technical style inspired by a journal-format sample; content is original to the implemented AI-containment project.
+        </div>
+        <div>
+          Published By:<br>
+          Secure AI Systems Research Studio<br>
+          and Project Implementation Archive
+        </div>
+        <div class="seal" aria-hidden="true">
+          <div class="circle"></div>
+          <div class="label">AICS</div>
+        </div>
+      </div>
+    </div>
+  </article>
+</body>
+</html>
